@@ -8,6 +8,11 @@
   <script type="text/javascript">
     Plotly.d3.json('data/complete_graph_ref.json', function(err, fig) {
 
+      if (err) {
+         alert("Error retrieving json data");
+         return;
+      }
+
       nodes_by_key = {}
       labels = []
       node_colors =[]
