@@ -1,0 +1,87 @@
+<html>
+<head><meta charset="utf-8" /></head>
+<body>
+<div>
+  <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+  <script src="https://cdn.plot.ly/plotly-latest.js"></script>    
+  <div id="myDiv" class="plotly-graph-div" style="height:1000px; width:1000px;"></div>
+  <script type="text/javascript">
+    Plotly.d3.json('data/complete_graph_ref.json', function(err, fig) {
+
+      nodes_by_key = {}
+      labels = []
+      node_colors =[]
+      Xn = []
+      Yn = []
+      Zn = []
+      for (var i = 0; i < fig.nodes.length; i++) {
+        node = fig.nodes[i];
+        nodes_by_key[node.id] = node
+        label = `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />x: ${node.x}<br />y: ${node.y}<br /> z:${node.z}`;
+        labels.push(label);
+        if (node.color) {
+          node_colors.push(node.color);
+        } else {
+          node_colors.push("#000000");
+        }
+        Xn.push(node['x']);
+        Yn.push(node['y']);
+        Zn.push(node['z']);
+      }
+
+      Xe = []
+      Ye = []
+      Ze = []
+      for (var i = 0; i < fig.edges.length; i++) {
+        edge = fig.edges[i];
+        s = nodes_by_key[edge.source];
+        t = nodes_by_key[edge.target];
+        Xe.push(s['x'], t['x'], null);
+        Ye.push(s['y'], t['y'], null);
+        Ze.push(s['z'], t['z'], null);
+      }
+
+     var trace_edges = {
+        x: Xe,
+        y: Ye,
+        z: Ze,
+        mode: 'lines',
+        name: 'Edges',
+        marker: {
+          size: 12,
+          line: {
+          color: 'rgba(217, 217, 217, 0.14)',
+          width: 1},
+          opacity: 0.8},
+        type: 'scatter3d'
+      };
+      
+      var trace_nodes = {
+        x: Xn,
+        y: Yn,
+        z: Zn,
+        mode: 'markers',
+        name: 'Nodes',
+        marker: {
+          color: node_colors,
+          colorscake: 'Viridis',
+          size: 6,
+          symbol: 'circle',
+          line: {
+    		color: 'rgb(204, 204, 204)',
+          width: 1},
+          opacity: 0.8},
+        type: 'scatter3d'};
+
+      var data = [trace_nodes, trace_edges];
+      var layout = {
+	    margin: {t: 100},
+        title: {text: 'Nuxeo Bundles'},
+        };
+  
+      Plotly.newPlot('myDiv', data, layout);
+	});
+  </script>
+</div>
+</body>
+</html>
