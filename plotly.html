@@ -16,6 +16,7 @@
       nodes_by_key = {}
       labels = []
       node_colors =[]
+      node_weights =[]
       Xn = []
       Yn = []
       Zn = []
@@ -29,6 +30,7 @@
         } else {
           node_colors.push("#000000");
         }
+        node_weights.push(node.weight*5);
         Xn.push(node['x']);
         Yn.push(node['y']);
         Zn.push(node['z']);
@@ -56,9 +58,11 @@
         marker: {
           size: 12,
           line: {
-          color: 'rgba(217, 217, 217, 0.14)',
-          width: 1},
-          opacity: 0.8},
+            color: 'rgba(217, 217, 217, 0.14)',
+            width: 1
+          },
+          opacity: 0.8
+        },
         type: 'scatter3d'
       };
       
@@ -72,21 +76,30 @@
         text: labels,
         marker: {
           color: node_colors,
-          colorscake: 'Viridis',
+          colorscale: 'Viridis',
+          // size: node_weights,
           size: 6,
           symbol: 'circle',
           line: {
-    		color: 'rgb(204, 204, 204)',
-          width: 1},
-          opacity: 0.8},
-        type: 'scatter3d'};
+            color: 'rgb(204, 204, 204)',
+            width: 1
+          },
+          opacity: 0.8
+        },
+        type: 'scatter3d'
+      };
 
       var data = [trace_nodes, trace_edges];
+
       var layout = {
-	    margin: {t: 100},
+        margin: {t: 100},
         title: {text: 'Nuxeo Bundles'},
-        };
-  
+        showlegend: true,
+        hovermode: 'closest',
+        width: 2000,
+        height: 2000,
+      };
+
       Plotly.newPlot('myDiv', data, layout);
 	});
   </script>
