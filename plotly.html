@@ -15,8 +15,9 @@
 
       nodes_by_key = {}
       labels = []
-      node_colors =[]
-      node_weights =[]
+      node_colors = []
+      node_weights = []
+      node_shapes = []
       Xn = []
       Yn = []
       Zn = []
@@ -31,6 +32,17 @@
           node_colors.push("#000000");
         }
         node_weights.push(node.weight*5);
+        if (node.type == 'BUNDLE') {
+          node_shapes.push('diamond')
+        } else if (node.type == 'COMPONENT') {
+          node_shapes.push('square')
+        } else if (node.type == 'SERVICE') {
+          node_shapes.push('diamond')
+        } else if (node.type == 'EXTENSION_POINT') {
+          node_shapes.push('cross')
+        } else {
+          node_shapes.push('circle')
+        }
         Xn.push(node['x']);
         Yn.push(node['y']);
         Zn.push(node['z']);
@@ -39,8 +51,10 @@
       Xe = []
       Ye = []
       Ze = []
+      edge_labels = []
       for (var i = 0; i < fig.edges.length; i++) {
         edge = fig.edges[i];
+        edge_labels.push(`<b>${edge.value}</b>`);
         s = nodes_by_key[edge.source];
         t = nodes_by_key[edge.target];
         Xe.push(s['x'], t['x'], null);
@@ -54,7 +68,8 @@
         z: Ze,
         mode: 'lines',
         name: 'Edges',
-		hoverinfo: 'none',
+        hoverinfo: 'text',
+        text: edge_labels,
         marker: {
           size: 12,
           line: {
@@ -72,14 +87,14 @@
         z: Zn,
         mode: 'markers',
         name: 'Nodes',
-		hoverinfo: 'text',
+        hoverinfo: 'text',
         text: labels,
         marker: {
           color: node_colors,
           colorscale: 'Viridis',
           // size: node_weights,
           size: 6,
-          symbol: 'circle',
+          symbol: node_shapes,
           line: {
             color: 'rgb(204, 204, 204)',
             width: 1
