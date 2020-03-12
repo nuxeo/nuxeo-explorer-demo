@@ -1,104 +1,143 @@
 <html>
-<head><meta charset="utf-8" /><title>Nuxeo Test Bundles</title></head>
+<head><meta charset="utf-8" /><title>Nuxeo Plotly Rendering</title></head>
 <body>
 <div>
   <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
   <script src="https://cdn.plot.ly/plotly-latest.js"></script>    
-  <div id="myDiv" class="plotly-graph-div" style="height:2000px; width:2000px;"></div>
+  <div id="selection" style="text-align:center">
+    <form>
+      Select datasource:
+      <select id="ds">
+        <option value="data/gephi.json" selected="selected">Nuxeo Test Graph</option>
+        <option value="data/gephi_bundles.json">Nuxeo Test Bundles</option>
+        <option value="data/complete_graph_ref.json">Nuxeo Complete Graph</option>
+        <option value="data/complete_bundles_graph_ref.json">Nuxeo Complete Bundle Graph</option>
+        <option value="data/complete_xp_graph_ref.json">Nuxeo Complete XP graph</option>
+      </select>
+    </form>
+  </div>
+  <div id="myDiv" class="plotly-graph-div"></div>
   <script type="text/javascript">
-    Plotly.d3.json('data/gephi_bundles.json', function(err, fig) {
+    datasource = 'data/gephi.json';
+    datasource_title = "Nuxeo Test Graph";
+
+    document.getElementById('ds').addEventListener('change', function() {
+      datasource = this.value;
+      datasource_title = this.options[this.selectedIndex].label;
+      render();
+    });
+    window.onload = render;
+
+    function render() {
+    Plotly.d3.json(datasource, function(err, fig) {
 
       if (err) {
          alert("Error retrieving json data");
          return;
       }
 
-      nodes_by_key = {}
-      node_labels = []
-      node_colors = []
-      node_weights = []
-      node_shapes = []
-      Xn = []
-      Yn = []
-      Zn = []
-      for (var i = 0; i < fig.nodes.length; i++) {
-        node = fig.nodes[i];
-        nodes_by_key[node.id] = node
-        label = `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />x: ${node.x}<br />y: ${node.y}<br /> z:${node.z}`;
-        node_labels.push(label);
-        node_colors.push(node.color);
-        node_weights.push(node.weight*5);
-        if (node.type == 'BUNDLE') {
-          node_shapes.push('diamond')
-        } else if (node.type == 'COMPONENT') {
-          node_shapes.push('square')
-        } else if (node.type == 'SERVICE') {
-          node_shapes.push('diamond-open')
-        } else if (node.type == 'EXTENSION_POINT') {
-          node_shapes.push('cross')
-        } else {
-          node_shapes.push('circle')
-        }
-        Xn.push(node['x']);
-        Yn.push(node['y']);
-        Zn.push(node['z']);
-      }
+      nodes_by_key = fig.nodes.reduce(function(map, node) {
+        map[node.id] = node;
+        return map;
+      }, {});
 
-      Xe = []
-      Ye = []
-      Ze = []
-      edge_labels = []
-      edge_colors = []
-      for (var i = 0; i < fig.edges.length; i++) {
-        edge = fig.edges[i];
-        edge_labels.push(`${edge.source} <b>${edge.value}</b> ${edge.target}`);
-        if (edge.value == 'CONTAINS') {
-          edge_colors.push('#00CC00')
-        } else if (edge.value == 'REFERENCES') {
-          edge_colors.push('#00CC00')
-        } else if (edge.value == 'REQUIRES') {
-          edge_colors.push('#FFA000')
-        } else if (edge.value == 'SOFT_REQUIRES') {
-          edge_colors.push('#FDD835')
-        } else {
-          edge_colors.push('#03C04A')
-        }
-        s = nodes_by_key[edge.source];
-        t = nodes_by_key[edge.target];
-        Xe.push(s['x'], t['x'], null);
-        Ye.push(s['y'], t['y'], null);
-        Ze.push(s['z'], t['z'], null);
-      }
-
-      var trace_edges = {
-        x: Xe,
-        y: Ye,
-        z: Ze,
-        mode: 'lines',
-        name: 'Edges',
-        hoverinfo: 'none',
-        text: edge_labels,
-        line: {
-          color: 'grey',
-          width: 2,
-          opacity: 0.5
+      bundles = fig.nodes.filter(function(node) {return node.type == 'BUNDLE'});
+      components = fig.nodes.filter(function(node) {return node.type == 'COMPONENT'});
+      services = fig.nodes.filter(function(node) {return node.type == 'SERVICE'});
+      xps = fig.nodes.filter(function(node) {return node.type == 'EXTENSION_POINT'});
+      contributions = fig.nodes.filter(function(node) {return node.type == 'CONTRIBUTION'});
+      var trace_bundles = {
+        x: bundles.map(node => node['x']),
+        y: bundles.map(node => node['y']),
+        z: bundles.map(node => node['z']),
+        mode: 'markers',
+        name: 'Bundles',
+        hoverinfo: 'text',
+        text: bundles.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
+        marker: {
+          color: bundles.map(node => node.color),
+          size: 6,
+          symbol: 'diamond',
+          opacity: 0.8,
+          line: {
+            color: "rgb(50,50,50)",
+            width: 0.5
+          },
         },
         type: 'scatter3d'
       };
-
-      var trace_nodes = {
-        x: Xn,
-        y: Yn,
-        z: Zn,
+      var trace_components = {
+        x: components.map(node => node['x']),
+        y: components.map(node => node['y']),
+        z: components.map(node => node['z']),
         mode: 'markers',
-        name: 'Nodes',
+        name: 'Components',
         hoverinfo: 'text',
-        text: node_labels,
+        text: components.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
         marker: {
-          color: node_colors,
-          // size: node_weights,
+          color: components.map(node => node.color),
           size: 6,
-          symbol: node_shapes,
+          symbol: 'square',
+          opacity: 0.8,
+          line: {
+            color: "rgb(50,50,50)",
+            width: 0.5
+          },
+        },
+        type: 'scatter3d'
+      };
+      var trace_services = {
+        x: services.map(node => node['x']),
+        y: services.map(node => node['y']),
+        z: services.map(node => node['z']),
+        mode: 'markers',
+        name: 'Services',
+        hoverinfo: 'text',
+        text: services.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
+        marker: {
+          color: services.map(node => node.color),
+          size: 6,
+          symbol: 'diamond-open',
+          opacity: 0.8,
+          line: {
+            color: "rgb(50,50,50)",
+            width: 0.5
+          },
+        },
+        type: 'scatter3d'
+      };
+      var trace_xps = {
+        x: xps.map(node => node['x']),
+        y: xps.map(node => node['y']),
+        z: xps.map(node => node['z']),
+        mode: 'markers',
+        name: 'Extension Points',
+        hoverinfo: 'text',
+        text: xps.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
+        marker: {
+          color: xps.map(node => node.color),
+          size: 6,
+          symbol: 'cross',
+          opacity: 0.8,
+          line: {
+            color: "rgb(50,50,50)",
+            width: 0.5
+          },
+        },
+        type: 'scatter3d'
+      };
+      var trace_contributions = {
+        x: contributions.map(node => node['x']),
+        y: contributions.map(node => node['y']),
+        z: contributions.map(node => node['z']),
+        mode: 'markers',
+        name: 'Contributions',
+        hoverinfo: 'text',
+        text: contributions.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
+        marker: {
+          color: contributions.map(node => node.color),
+          size: 6,
+          symbol: 'circle',
           opacity: 0.8,
           line: {
             color: "rgb(50,50,50)",
@@ -108,11 +147,75 @@
         type: 'scatter3d'
       };
 
-      var data = [trace_nodes, trace_edges];
+      brequires = fig.edges.filter(function(edge) {return edge.value == 'REQUIRES'});
+      crequires = fig.edges.filter(function(edge) {return edge.value == 'SOFT_REQUIRES'});
+      references = fig.edges.filter(function(edge) {return edge.value == 'REFERENCES'});
+      contains = fig.edges.filter(function(edge) {return edge.value == 'CONTAINS'});
+      var trace_brequires = {
+        x: brequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
+        y: brequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
+        z: brequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
+        mode: 'lines',
+        name: 'Requires Bundle',
+        hoverinfo: 'none',
+        line: {
+          color: '#FFA000',
+          width: 2,
+          opacity: 0.5
+        },
+        type: 'scatter3d'
+      };
+      var trace_crequires = {
+        x: crequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
+        y: crequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
+        z: crequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
+        mode: 'lines',
+        name: 'Requires Component',
+        hoverinfo: 'none',
+        line: {
+          color: '#FDD835',
+          width: 2,
+          opacity: 0.5
+        },
+        type: 'scatter3d'
+      };
+      var trace_references = {
+        x: references.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
+        y: references.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
+        z: references.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
+        mode: 'lines',
+        name: 'Contributes to Extension Point',
+        hoverinfo: 'none',
+        line: {
+          color: '#00CC00',
+          width: 2,
+          opacity: 0.5
+        },
+        type: 'scatter3d'
+      };
+      var trace_contains = {
+        x: contains.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
+        y: contains.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
+        z: contains.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
+        mode: 'lines',
+        name: 'Contains',
+        hoverinfo: 'none',
+        line: {
+          color: '#6699FF',
+          width: 2,
+          opacity: 0.5
+        },
+        visible: 'legendonly',
+        type: 'scatter3d'
+      };
+
+      var data = [
+        trace_bundles, trace_components, trace_services, trace_xps, trace_contributions,
+        trace_brequires, trace_crequires, trace_references, trace_contains
+      ];
 
       var layout = {
-        margin: {t: 100},
-        title: {text: 'Nuxeo Test Bundles'},
+        title: {text: datasource_title},
         showlegend: true,
         hovermode: 'closest',
         width: 2000,
@@ -138,8 +241,9 @@
           }}
       };
 
-      Plotly.newPlot('myDiv', data, layout);
+      Plotly.newPlot('myDiv', data, layout, {responsive: true});
 	});
+    };
   </script>
 </div>
 </body>
