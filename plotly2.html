@@ -1,12 +1,12 @@
 <html>
-<head><meta charset="utf-8" /><title>Nuxeo Test Bundles</title></head>
+<head><meta charset="utf-8" /><title>Nuxeo Test Graph</title></head>
 <body>
 <div>
   <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
   <script src="https://cdn.plot.ly/plotly-latest.js"></script>    
   <div id="myDiv" class="plotly-graph-div" style="height:2000px; width:2000px;"></div>
   <script type="text/javascript">
-    Plotly.d3.json('data/gephi_bundles.json', function(err, fig) {
+    Plotly.d3.json('data/gephi.json', function(err, fig) {
 
       if (err) {
          alert("Error retrieving json data");
@@ -112,7 +112,7 @@
 
       var layout = {
         margin: {t: 100},
-        title: {text: 'Nuxeo Test Bundles'},
+        title: {text: 'Nuxeo Test Graph'},
         showlegend: true,
         hovermode: 'closest',
         width: 2000,
