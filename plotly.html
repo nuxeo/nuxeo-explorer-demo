@@ -52,6 +52,7 @@
         z: bundles.map(node => node['z']),
         mode: 'markers',
         name: 'Bundles',
+        legendgroup: "bundles",
         hoverinfo: 'text',
         text: bundles.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
         marker: {
@@ -72,6 +73,7 @@
         z: components.map(node => node['z']),
         mode: 'markers',
         name: 'Components',
+        legendgroup: "components",
         hoverinfo: 'text',
         text: components.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
         marker: {
@@ -112,6 +114,7 @@
         z: xps.map(node => node['z']),
         mode: 'markers',
         name: 'Extension Points',
+        legendgroup: "xps",
         hoverinfo: 'text',
         text: xps.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
         marker: {
@@ -132,6 +135,7 @@
         z: contributions.map(node => node['z']),
         mode: 'markers',
         name: 'Contributions',
+        legendgroup: "xps",
         hoverinfo: 'text',
         text: contributions.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
         marker: {
@@ -157,6 +161,7 @@
         z: brequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
         mode: 'lines',
         name: 'Requires Bundle',
+        legendgroup: "bundles",
         hoverinfo: 'none',
         line: {
           color: '#FFA000',
@@ -171,6 +176,7 @@
         z: crequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
         mode: 'lines',
         name: 'Requires Component',
+        legendgroup: "components",
         hoverinfo: 'none',
         line: {
           color: '#FDD835',
@@ -185,6 +191,7 @@
         z: references.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
         mode: 'lines',
         name: 'Contributes to Extension Point',
+        legendgroup: "xps",
         hoverinfo: 'none',
         line: {
           color: '#00CC00',
@@ -214,6 +221,14 @@
         trace_brequires, trace_crequires, trace_references, trace_contains
       ];
 
+      var axis = {
+        showbackground: false,
+        showspikes: false,
+        showgrid: false,
+        showticklabels: false,
+        zeroline: false,
+        title: "",
+      }
       var layout = {
         title: {text: datasource_title},
         showlegend: true,
@@ -221,24 +236,10 @@
         width: 2000,
         height: 2000,
         scene: {
-          xaxis: {
-            backgroundcolor: "#F0F0F0",
-            gridcolor: "white",
-            showbackground: true,
-            zerolinecolor: "white",
-          },
-          yaxis: {
-            backgroundcolor: "#F0F8FF",
-            gridcolor: "white",
-            showbackground: true,
-            zerolinecolor: "white",
-          },
-          zaxis: {
-            backgroundcolor: "#E5ECF6",
-            gridcolor: "white",
-            showbackground: true,
-            zerolinecolor: "white",
-          }}
+          xaxis: axis,
+          yaxis: axis,
+          zaxis: axis,
+        }
       };
 
       Plotly.newPlot('myDiv', data, layout, {responsive: true});
