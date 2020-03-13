@@ -1,10 +1,21 @@
 <html>
-<head><meta charset="utf-8" /><title>Nuxeo Plotly Rendering</title></head>
+<head>
+  <meta charset="utf-8" />
+  <title>Nuxeo Plotly Rendering</title>
+  <style>
+    .plotly-graph-selection {
+      text-align:center;
+    }
+    .plotly-graph-div {
+      display: inline-block;
+    }
+  </style>
+</head>
 <body>
 <div>
   <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-  <script src="https://cdn.plot.ly/plotly-latest.js"></script>    
-  <div id="selection" style="text-align:center">
+  <script src="./plotly/plotly-latest.min.js"></script>
+  <div id="selection" class="plotly-graph-selection">
     <form>
       Select datasource:
       <select id="ds">
@@ -15,8 +26,8 @@
         <option value="data/complete_xp_graph_ref.json">Nuxeo Complete XP graph</option>
       </select>
     </form>
+    <div id="graph" class="plotly-graph-div"></div>
   </div>
-  <div id="myDiv" class="plotly-graph-div"></div>
   <script type="text/javascript">
     datasource = 'data/gephi.json';
     datasource_title = "Nuxeo Test Graph";
@@ -165,7 +176,7 @@
         hoverinfo: 'none',
         line: {
           color: '#FFA000',
-          width: 5,
+          width: 3,
           opacity: 0.5
         },
         type: 'scatter3d'
@@ -180,7 +191,7 @@
         hoverinfo: 'none',
         line: {
           color: '#FDD835',
-          width: 5,
+          width: 3,
           opacity: 0.5
         },
         type: 'scatter3d'
@@ -195,7 +206,7 @@
         hoverinfo: 'none',
         line: {
           color: '#00CC00',
-          width: 5,
+          width: 3,
           opacity: 0.5
         },
         type: 'scatter3d'
@@ -209,7 +220,7 @@
         hoverinfo: 'none',
         line: {
           color: '#6699FF',
-          width: 5,
+          width: 3,
           opacity: 0.5
         },
         visible: 'legendonly',
@@ -230,7 +241,7 @@
         title: "",
       }
       var layout = {
-        title: {text: datasource_title},
+        title: {text: `<b>${fig.title}</b><br><i>${fig.description}</i> (${datasource_title})`},
         showlegend: true,
         hovermode: 'closest',
         margin: {t: 100},
@@ -244,7 +255,7 @@
         }
       };
 
-      Plotly.newPlot('myDiv', data, layout, {responsive: true});
+      Plotly.newPlot('graph', data, layout, {responsive: true});
 	});
     };
   </script>
