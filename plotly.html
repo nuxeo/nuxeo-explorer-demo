@@ -15,12 +15,16 @@
 <div>
   <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
   <script src="./plotly/plotly-latest.min.js"></script>
+  <script src="./plotly/plotly_nuxeo.js" charset="utf-8"></script>
   <div id="selection" class="plotly-graph-selection">
     <form>
       Select datasource:
       <select id="ds">
         <option value="data/gephi.json" selected="selected">Nuxeo Test Graph</option>
+        <option value="data/gephi_flat.json">Nuxeo Test Graph Flat</option>
         <option value="data/gephi_bundles.json">Nuxeo Test Bundles</option>
+        <option value="data/gephi_xp.json">Nuxeo Test XP Graph</option>
+        <option value="data/gephi_xp_flat.json">Nuxeo Test XP Graph Flat</option>
         <option value="data/complete_graph_ref.json">Nuxeo Complete Graph</option>
         <option value="data/complete_bundles_graph_ref.json">Nuxeo Complete Bundle Graph</option>
         <option value="data/complete_xp_graph_ref.json">Nuxeo Complete XP graph</option>
@@ -29,252 +33,17 @@
     <div id="graph" class="plotly-graph-div"></div>
   </div>
   <script type="text/javascript">
-    datasource = 'data/gephi.json';
-    datasource_title = "Nuxeo Test Graph";
-
-    document.getElementById('ds').addEventListener('change', function() {
+    var select = document.getElementById('ds');
+    var datasource = select.value;
+    var datasource_title = select.options[select.selectedIndex].label;
+    select.addEventListener('change', function() {
       datasource = this.value;
       datasource_title = this.options[this.selectedIndex].label;
-      render();
+      NXPlotly.render(datasource, datasource_title, 'graph');
     });
-    window.onload = render;
-
-    function nodeColor(node) {
-      if (node.category == 'RUNTIME') {
-        return 0;
-      } else if (node.category == 'CORE') {
-        return 1;
-      } else if (node.category == 'STUDIO') {
-        return 3;
-      }
-      // default: PLATFORM
-      return 2;
+    window.onload = function() {
+      NXPlotly.render(datasource, datasource_title, 'graph');
     }
-
-    function render() {
-    Plotly.d3.json(datasource, function(err, fig) {
-
-      if (err) {
-         alert("Error retrieving json data");
-         return;
-      }
-
-      nodes_by_key = fig.nodes.reduce(function(map, node) {
-        map[node.id] = node;
-        return map;
-      }, {});
-
-      bundles = fig.nodes.filter(function(node) {return node.type == 'BUNDLE'});
-      components = fig.nodes.filter(function(node) {return node.type == 'COMPONENT'});
-      services = fig.nodes.filter(function(node) {return node.type == 'SERVICE'});
-      xps = fig.nodes.filter(function(node) {return node.type == 'EXTENSION_POINT'});
-      contributions = fig.nodes.filter(function(node) {return node.type == 'CONTRIBUTION'});
-      var trace_bundles = {
-        x: bundles.map(node => node['x']),
-        y: bundles.map(node => node['y']),
-        z: bundles.map(node => node['z']),
-        mode: 'markers',
-        name: 'Bundles',
-        legendgroup: "bundles",
-        hoverinfo: 'text',
-        text: bundles.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
-        marker: {
-          color: bundles.map(node => nodeColor(node)),
-          colorscale: "Viridis",
-          size: 6,
-          symbol: 'diamond',
-          opacity: 0.8,
-          line: {
-            color: "rgb(50,50,50)",
-            width: 0.5
-          },
-        },
-        type: 'scatter3d'
-      };
-      var trace_components = {
-        x: components.map(node => node['x']),
-        y: components.map(node => node['y']),
-        z: components.map(node => node['z']),
-        mode: 'markers',
-        name: 'Components',
-        legendgroup: "components",
-        hoverinfo: 'text',
-        text: components.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
-        marker: {
-          color: components.map(node => nodeColor(node)),
-          colorscale: "Viridis",
-          size: 6,
-          symbol: 'square',
-          opacity: 0.8,
-          line: {
-            color: "rgb(50,50,50)",
-            width: 0.5
-          },
-        },
-        type: 'scatter3d'
-      };
-      var trace_services = {
-        x: services.map(node => node['x']),
-        y: services.map(node => node['y']),
-        z: services.map(node => node['z']),
-        mode: 'markers',
-        name: 'Services',
-        hoverinfo: 'text',
-        text: services.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
-        marker: {
-          color: bundles.map(node => nodeColor(node)),
-          colorscale: "Viridis",
-          size: 6,
-          symbol: 'diamond-open',
-          opacity: 0.8,
-          line: {
-            color: "rgb(50,50,50)",
-            width: 0.5
-          },
-        },
-        type: 'scatter3d'
-      };
-      var trace_xps = {
-        x: xps.map(node => node['x']),
-        y: xps.map(node => node['y']),
-        z: xps.map(node => node['z']),
-        mode: 'markers',
-        name: 'Extension Points',
-        legendgroup: "xps",
-        hoverinfo: 'text',
-        text: xps.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
-        marker: {
-          color: xps.map(node => nodeColor(node)),
-          colorscale: "Viridis",
-          size: 6,
-          symbol: 'cross',
-          opacity: 0.8,
-          line: {
-            color: "rgb(50,50,50)",
-            width: 0.5
-          },
-        },
-        type: 'scatter3d'
-      };
-      var trace_contributions = {
-        x: contributions.map(node => node['x']),
-        y: contributions.map(node => node['y']),
-        z: contributions.map(node => node['z']),
-        mode: 'markers',
-        name: 'Contributions',
-        legendgroup: "xps",
-        hoverinfo: 'text',
-        text: contributions.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
-        marker: {
-          color: contributions.map(node => nodeColor(node)),
-          colorscale: "Viridis",
-          size: 6,
-          symbol: 'circle',
-          opacity: 0.8,
-          line: {
-            color: "rgb(50,50,50)",
-            width: 0.5
-          },
-        },
-        type: 'scatter3d'
-      };
-
-      brequires = fig.edges.filter(function(edge) {return edge.value == 'REQUIRES'});
-      crequires = fig.edges.filter(function(edge) {return edge.value == 'SOFT_REQUIRES'});
-      references = fig.edges.filter(function(edge) {return edge.value == 'REFERENCES'});
-      contains = fig.edges.filter(function(edge) {return edge.value == 'CONTAINS'});
-      var trace_brequires = {
-        x: brequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
-        y: brequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
-        z: brequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
-        mode: 'lines',
-        name: 'Requires Bundle',
-        legendgroup: "bundles",
-        hoverinfo: 'none',
-        line: {
-          color: '#FFA000',
-          width: 3,
-          opacity: 0.5
-        },
-        type: 'scatter3d'
-      };
-      var trace_crequires = {
-        x: crequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
-        y: crequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
-        z: crequires.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
-        mode: 'lines',
-        name: 'Requires Component',
-        legendgroup: "components",
-        hoverinfo: 'none',
-        line: {
-          color: '#FDD835',
-          width: 3,
-          opacity: 0.5
-        },
-        type: 'scatter3d'
-      };
-      var trace_references = {
-        x: references.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
-        y: references.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
-        z: references.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
-        mode: 'lines',
-        name: 'Contributes to Extension Point',
-        legendgroup: "xps",
-        hoverinfo: 'none',
-        line: {
-          color: '#00CC00',
-          width: 3,
-          opacity: 0.5
-        },
-        type: 'scatter3d'
-      };
-      var trace_contains = {
-        x: contains.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
-        y: contains.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
-        z: contains.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
-        mode: 'lines',
-        name: 'Contains',
-        hoverinfo: 'none',
-        line: {
-          color: '#6699FF',
-          width: 3,
-          opacity: 0.5
-        },
-        visible: 'legendonly',
-        type: 'scatter3d'
-      };
-
-      var data = [
-        trace_bundles, trace_components, trace_services, trace_xps, trace_contributions,
-        trace_brequires, trace_crequires, trace_references, trace_contains
-      ];
-
-      var axis = {
-        showbackground: false,
-        showspikes: false,
-        showgrid: false,
-        showticklabels: false,
-        zeroline: false,
-        title: "",
-      }
-      var layout = {
-        title: {text: `<b>${fig.title}</b><br><i>${fig.description}</i> (${datasource_title})`},
-        showlegend: true,
-        hovermode: 'closest',
-        margin: {t: 100},
-        paper_bgcolor: "#eee",
-        width: 2000,
-        height: 2000,
-        scene: {
-          xaxis: axis,
-          yaxis: axis,
-          zaxis: axis,
-        }
-      };
-
-      Plotly.newPlot('graph', data, layout, {responsive: true});
-	});
-    };
   </script>
 </div>
 </body>
