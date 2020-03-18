@@ -18,31 +18,52 @@
   <script src="./plotly/plotly_nuxeo.js" charset="utf-8"></script>
   <div id="selection" class="plotly-graph-selection">
     <form>
-      Select datasource:
-      <select id="ds">
-        <option value="data/gephi.json" selected="selected">Nuxeo Test Graph</option>
-        <option value="data/gephi_flat.json">Nuxeo Test Graph Flat</option>
-        <option value="data/gephi_bundles.json">Nuxeo Test Bundles</option>
-        <option value="data/gephi_xp.json">Nuxeo Test XP Graph</option>
-        <option value="data/gephi_xp_flat.json">Nuxeo Test XP Graph Flat</option>
-        <option value="data/complete_graph_ref.json">Nuxeo Complete Graph</option>
-        <option value="data/complete_bundles_graph_ref.json">Nuxeo Complete Bundle Graph</option>
-        <option value="data/complete_xp_graph_ref.json">Nuxeo Complete XP graph</option>
-      </select>
+      <div>
+        <label for="ds">Select Datasource:</label>
+        <select id="ds" name="ds">
+          <option value="data/gephi.json" selected="selected">Nuxeo Test Graph</option>
+          <option value="data/gephi_flat.json">Nuxeo Test Graph Flat</option>
+          <option value="data/gephi_bundles.json">Nuxeo Test Bundles</option>
+          <option value="data/gephi_xp.json">Nuxeo Test XP Graph</option>
+          <option value="data/gephi_xp_flat.json">Nuxeo Test XP Graph Flat</option>
+          <option value="data/complete_graph_ref.json">Nuxeo Complete Graph</option>
+          <option value="data/complete_bundles_graph_ref.json">Nuxeo Complete Bundle Graph</option>
+          <option value="data/complete_xp_graph_ref.json">Nuxeo Complete XP graph</option>
+        </select>
+        <input type="checkbox" id="circ" name="circ">
+        <label for="circ">Circular</label>
+      </div>
+      <div>
+        <select class="bundleselectorclass">
+          <option value="" selected disabled hidden="hidden">Filter on Bundle</option>
+        </select>
+      </div>
     </form>
     <div id="graph" class="plotly-graph-div"></div>
   </div>
   <script type="text/javascript">
     var select = document.getElementById('ds');
+    var circCheck = document.getElementById('circ');
     var datasource = select.value;
+    var options = {
+            circ: circCheck.checked,
+            bundleselector: '.bundleselectorclass',
+    };
     var datasource_title = select.options[select.selectedIndex].label;
+    function doRender() {
+        NXPlotly.render(datasource, datasource_title, 'graph', options);
+    }
     select.addEventListener('change', function() {
       datasource = this.value;
       datasource_title = this.options[this.selectedIndex].label;
-      NXPlotly.render(datasource, datasource_title, 'graph');
+      doRender();
+    });
+    circCheck.addEventListener('change', function() {
+      options['circ'] = this.checked;
+      doRender();
     });
     window.onload = function() {
-      NXPlotly.render(datasource, datasource_title, 'graph');
+      doRender();
     }
   </script>
 </div>
