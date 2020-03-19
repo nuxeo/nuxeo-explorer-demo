@@ -14,7 +14,7 @@
 <body>
 <div>
   <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-  <script src="./plotly/plotly-latest.min.js"></script>
+  <script src="./plotly/plotly-latest.js"></script>
   <script src="./plotly/plotly_nuxeo.js" charset="utf-8"></script>
   <div id="selection" class="plotly-graph-selection">
     <form>
@@ -34,7 +34,7 @@
         <label for="circ">Circular</label>
       </div>
       <div>
-        <select class="bundleselectorclass">
+        <select class="bundleselectorclass" id="bundleselector" name="bundleselector">
           <option value="" selected disabled hidden="hidden">Filter on Bundle</option>
         </select>
       </div>
@@ -45,17 +45,21 @@
     var select = document.getElementById('ds');
     var circCheck = document.getElementById('circ');
     var datasource = select.value;
-    var options = {
-            circ: circCheck.checked,
-            bundleselector: '.bundleselectorclass',
-    };
+    var bundleselector = document.getElementById('bundleselector');
     var datasource_title = select.options[select.selectedIndex].label;
+    var options = {
+            datasource: datasource,
+            datasourcetitle: select.options[select.selectedIndex].label,
+            circ: circCheck.checked,
+            bundleselector: '#bundleselector',
+            selectedbundle: bundleselector.value,
+    };
     function doRender() {
-        NXPlotly.render(datasource, datasource_title, 'graph', options);
+        NXPlotly.render('graph', options);
     }
     select.addEventListener('change', function() {
-      datasource = this.value;
-      datasource_title = this.options[this.selectedIndex].label;
+      options['datasource'] = this.value;
+      options['datasourceTitle'] = this.options[this.selectedIndex].label;
       doRender();
     });
     circCheck.addEventListener('change', function() {

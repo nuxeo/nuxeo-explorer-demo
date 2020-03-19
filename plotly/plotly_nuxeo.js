@@ -5,14 +5,20 @@
 
         var _plot = {};
 
-        const traceSelectName = 'currentselectiontrace';
+        const DEFAULT_LINE_WIDTH = 3;
+        const DEFAULT_MARKER_OPACITY = 0.8;
+        const TRACE_SELECT_NAME = 'Current Selection';
 
         const graphType = (type) => ({
             'BASIC_LAYOUT': '2d',
             'BASIC_LAYOUT_3D': '3d',
         })[type];
 
-        _plot.render = function(datasource, datasource_title, graph, options) {
+        _plot.render = function(graph, options) {
+            var datasource = options.datasource;
+            if (!datasource) {
+                alert("No datasource");
+            }
             Plotly.d3.json(datasource, function(err, fig) {
                 if (err) {
                     alert("Error retrieving json data");
@@ -21,14 +27,15 @@
                 if (graphType(fig.type) == undefined) {
                     console.alert("Unsupported graph type " + fig.type);
                 }
-                if (options == undefined) {
-                    options = {};
+                if (options.circ) {
+                    renderCirc(graph, fig, options);
+                } else {
+                    renderBasic(graph, fig, options);
                 }
-                _render(datasource, datasource_title, graph, fig, options);
             });
         };
 
-        function is3D(type) {
+        function is3DGraph(type) {
             return graphType(type) === '3d';
         }
 
@@ -84,138 +91,35 @@
             'CONTAINS': '#6496ff',
         })[value];
 
-        function traceNodes(fig, type, config) {
-            var nodes = fig.nodes.filter(function(node) {return type ? node.type == type: true});
-            var dict = {
-                    name: (type ? nodeLabel(type) : "Nodes"),
-                    mode: 'markers',
-                    type: 'scatter',
-                    x: nodes.map(node => node['x']),
-                    y: nodes.map(node => node['y']),
-                    hoverinfo: 'text',
-                    text: nodes.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}`),
-                    customdata: nodes.reduce(function(r, node) {return {type: 'node', 'nodetype': node.type, id: node.id};}, []),
+        function nodeMarkerText(node) {
+            return `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}`;
+        };
+
+        // info to be parsed on node marker selection
+        function nodeMarkerInfo(node) {
+            return {
+                type: 'node',
+                id: node.id,
             };
-            if (is3D(fig.type)) {
-                Object.assign(dict, {
-                    type: 'scatter3d',
-                    z: nodes.map(node => node['z'])
-                });
-            }
-            Object.assign(dict, config);
-            var marker = {
-                    symbol: (type ? nodeSymbol(type) : nodes.map(node => nodeSymbol[node.type])),
-                    color: nodes.map(node => nodeColor(node.category)),
-                    colorscale: 'Viridis',
-                    size: nodes.map(node => node['weight']*5),
-                    opacity: 0.8,
-                    line: {
-                        color: 'rgb(50,50,50)',
-                        width: 0.5
-                    },
-            };
-            dict['marker'] = Object.assign({}, marker, config.marker);
-            return [dict];
         }
 
-        function traceEdges(fig, nodes_by_key, type, config) {
-            var edges = fig.edges.filter(function(edge) {return type ? edge.value == type : true});
-            function getLines(edges, axis) {
-                return edges.reduce(function(r, edge) {r.push(nodes_by_key[edge.source][axis], nodes_by_key[edge.target][axis], null); return r;}, []);
-            }
-            var trace = {
-                    name: (type ? edgeLabel(type) : "Edges"),
-                    mode: 'lines',
-                    type: 'scattergl',
-                    x: getLines(edges, 'x'),
-                    y: getLines(edges, 'y'),
-                    hoverinfo: 'none',
-            };
-            if (is3D(fig.type)) {
-                Object.assign(trace, {
-                    type: 'scatter3d',
-                    z: getLines(edges, 'z'),
-                });
-            }
-            Object.assign(trace, config);
-            var colors =  (type ? edgeColor(type) : edges.map(edge => edgeColor(edge.value)));
-            var line = {
-                    color: colors,
-                    width: edges.map(edge => edge['weight']*3),
-            };
-            trace['line'] = Object.assign({}, line, config.line);
-
-            // additional trace to show marker points on relations for better text on hover
-            function getIntermediateNodes(edges, axis) {
-                return edges.reduce(function(res, edge) {
-                    res.push(
-                            (3*nodes_by_key[edge.source][axis] + nodes_by_key[edge.target][axis])/4,
-                            (nodes_by_key[edge.source][axis] + nodes_by_key[edge.target][axis])/2,
-                            (nodes_by_key[edge.source][axis] + 3*nodes_by_key[edge.target][axis])/4,
-                    );
-                    return res;
-                }, []);
-            }
-            var textlabels = edges.map(edge => `${nodes_by_key[edge.source]['label']} <b>${edge.value}</b> ${nodes_by_key[edge.target]['label']}`);
-            // use edge index in original trace to find the edge thanks to the marker on selection
-            var selecthelpers = edges.reduce(function(r, edge, index) {r.push({type: 'edgemarker', value: index}); return r;}, []);
-            var labels = {
-                    name: 'Edge Labels for '+ (type ? edgeLabel(type) : "Edges"),
-                    mode: 'markers',
-                    // adapt the following to intermediate nodes additions
-                    text: textlabels.reduce(function(r, item) {r.push(item, item, item); return r;}, []),
-                    // adapt the following to intermediate nodes additions
-                    customdata: selecthelpers.reduce(function(r, item) {r.push(item, item, item); return r;}, []),
-                    type: 'scattergl',
-                    showlegend: false,
-                    x: getIntermediateNodes(edges, 'x'),
-                    y: getIntermediateNodes(edges, 'y'),
-                    hoverinfo: 'text',
-                    marker: {
-                        symbol: 'star',
-                        // adapt the following to intermediate nodes additions
-                        color: (type ? colors: colors.reduce(function(r, item) {r.push(item, item, item); return r;}, [])),
-                        size: 1,
-                        opacity: 0.8,
-                    },
-            };
-            if (is3D(fig.type)) {
-                Object.assign(labels, {
-                    type: 'scatter3d',
-                    z: getIntermediateNodes(edges, 'z'),
-                });
-            }
-            Object.assign(labels, config);
-            var labelline = {
-                    color: 'rgb(50,50,50)',
-                    width: 0.5
-            };
-            labels['marker']['line'] = Object.assign({}, labelline, config.line);
-
-            return [trace, labels];
+        function nodeWeight(weight) {
+            return (weight) ? weight*5 : 5;
         }
 
-        function traceMesh(fig, nodes_by_key, type, config) {
-            var edges = fig.edges.filter(function(edge) {return type ? edge.value == type: true});
-            var trace = {
-                    name: 'Mesh Tentative (WIP)',
-                    alphahull: 7,
-                    opacity: 0.1,
-                    type: 'mesh',
-                    x: edges.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['x'], nodes_by_key[edge.target]['x'], null); return r;}, []),
-                    y: edges.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['y'], nodes_by_key[edge.target]['y'], null); return r;}, []),
+        function edgeLineMarkerText(edge, nodesById) {
+            return `${nodesById[edge.source]['label']} <b>${edge.value}</b> ${nodesById[edge.target]['label']}`;
+        };
+
+        // info to be parsed on edge line marker selection
+        function edgeLineMarkerInfo(edge) {
+            return {
+                type: 'edgemarker',
+                id: edge.id,
             };
-            if (is3D(fig.type)) {
-                Object.assign(trace, {
-                    type: 'mesh3d',
-                    z: edges.reduce(function(r, edge) {r.push(nodes_by_key[edge.source]['z'], nodes_by_key[edge.target]['z'], null); return r;}, []),
-                });
-            }
-            Object.assign(trace, config);
-            return trace;
         }
 
-        function getLayout(title, is3DGraph, config) {
+        function getLayout(title, is3D, config) {
             var layout = {
                     title: {text: title},
                     showlegend: true,
@@ -242,31 +146,173 @@
                     yaxis: axis,
             }
 
-            if (is3DGraph) {
-                Object.assign(scene, {zaxis: axis});
+            if (is3D) {
+                scene.zaxis = axis;
             }
             Object.assign(layout, config);
-            if (is3DGraph) {
-                layout['scene'] = scene;
+            if (is3D) {
+                layout.scene = scene;
             } else {
+                // axis directly on layout, outside of scene, in 2D
                 Object.assign(layout, scene);
             }
-            layout['legend'] = Object.assign({}, legend, config.legend);
+            layout.legend = Object.assign({}, legend, config.legend);
             return layout;
         }
 
-        function getUpdatemenus(graph, fig, data) {
-            var updatemenus = [];
+        function traceNodes(graphObject, type, config) {
+            var nodes = graphObject.data.nodes.filter(function(node) {return type ? node.type == type: true});
+            var trace = {
+                    name: (type ? nodeLabel(type) : "Nodes"),
+                    mode: 'markers',
+                    type: 'scatter',
+                    x: nodes.map(node => node.x),
+                    y: nodes.map(node => node.y),
+                    hoverinfo: 'text',
+                    text: nodes.map(node => nodeMarkerText(node)),
+                    customdata: nodes.map(node => nodeMarkerInfo(node)),
+            };
+            if (graphObject.is3D) {
+                Object.assign(trace, {
+                    type: 'scatter3d',
+                    z: nodes.map(node => node.z)
+                });
+            }
+            Object.assign(trace, config);
+            var marker = {
+                    symbol: (type ? nodeSymbol(type) : nodes.map(node => nodeSymbol(node.type))),
+                    color: nodes.map(node => nodeColor(node.category)),
+                    colorscale: 'Viridis',
+                    size: nodes.map(node => nodeWeight(node.weight)),
+                    opacity: DEFAULT_MARKER_OPACITY,
+                    line: {
+                        color: 'rgb(50,50,50)',
+                        width: 0.5
+                    },
+            };
+            trace.marker = Object.assign({}, marker, config.marker);
+            return [trace];
+        }
 
-            var node_sizes = data.reduce(function(res, trace) {
+        function computeEdgeLines(edges, nodesById, axis) {
+            return edges.reduce(function(r, edge) {r.push(nodesById[edge.source][axis], nodesById[edge.target][axis], null); return r;}, []);
+        }
+
+        function computeEdgeLineMarkers(edges, nodesById, axis) {
+            return edges.reduce(function(res, edge) {
+                res.push(...computeLineMarkers(nodesById[edge.source][axis], nodesById[edge.target][axis]));
+                return res;
+            }, []);
+        }
+
+        // helps building an additional trace to show marker points on relations for better text on hover
+        function computeLineMarkers(sourceaxis, targetaxis) {
+            return [
+                (3*sourceaxis + targetaxis)/4,
+                (sourceaxis + targetaxis)/2,
+                (sourceaxis + 3*targetaxis)/4,
+                ];
+        }
+
+        // adapt other data content to line markers multiplication thanks to above logics
+        function computeLineMarkersData(data) {
+            return data.reduce(function(r, item) {r.push(item, item, item); return r;}, []);
+        }
+
+        function traceEdges(graphObject, type, config) {
+            var edges = graphObject.data.edges.filter(function(edge) {return type ? edge.value == type : true});
+            var lines = {
+                    name: (type ? edgeLabel(type) : "Edges"),
+                    mode: 'lines',
+                    type: 'scattergl',
+                    x: computeEdgeLines(edges, graphObject.nodesById, 'x'),
+                    y: computeEdgeLines(edges, graphObject.nodesById, 'y'),
+                    hoverinfo: 'none',
+            };
+            if (graphObject.is3D) {
+                Object.assign(lines, {
+                    type: 'scatter3d',
+                    z: computeEdgeLines(edges, graphObject.nodesById, 'z'),
+                });
+            }
+            Object.assign(lines, config);
+            var colors =  (type ? edgeColor(type) : edges.map(edge => edgeColor(edge.value)));
+            var line = {
+                    color: colors,
+                    width: DEFAULT_LINE_WIDTH,
+            };
+            lines.line = Object.assign({}, line, config.line);
+
+            var labels = edges.map(edge => edgeLineMarkerText(edge, graphObject.nodesById));
+            var selecthelpers = edges.map(edge => edgeLineMarkerInfo(edge));
+            var markers = {
+                    name: 'Edge Labels for '+ (type ? edgeLabel(type) : "Edges"),
+                    mode: 'markers',
+                    text: computeLineMarkersData(labels),
+                    customdata: computeLineMarkersData(selecthelpers),
+                    type: 'scattergl',
+                    showlegend: false,
+                    x: computeEdgeLineMarkers(edges, graphObject.nodesById, 'x'),
+                    y: computeEdgeLineMarkers(edges, graphObject.nodesById, 'y'),
+                    hoverinfo: 'text',
+                    marker: {
+                        symbol: graphObject.is3D ? 'circle' : 'triangle-right',
+                                // adapt the following to intermediate nodes additions
+                                color: (type ? colors: computeLineMarkersData(colors)),
+                                size: 2,
+                                opacity: DEFAULT_MARKER_OPACITY,
+                    },
+            };
+            if (graphObject.is3D) {
+                Object.assign(markers, {
+                    type: 'scatter3d',
+                    z: computeEdgeLineMarkers(edges, graphObject.nodesById, 'z'),
+                });
+            }
+            Object.assign(markers, config);
+            var labelline = {
+                    color: 'rgb(50,50,50)',
+                    width: 0.5
+            };
+            markers.marker.line = Object.assign({}, labelline, config.line);
+
+            return [lines, markers];
+        }
+
+        function traceMesh(graphObject, type, config) {
+            var edges = graphObject.data.edges.filter(function(edge) {return type ? edge.value == type: true});
+            var trace = {
+                    name: 'Mesh Tentative (WIP)',
+                    alphahull: 7,
+                    opacity: 0.1,
+                    type: 'mesh',
+                    x: computeEdgeLines(edges, graphObject.nodesById, 'x'),
+                    y: computeEdgeLines(edges, graphObject.nodesById, 'y'),
+            };
+            if (graphObject.is3D) {
+                Object.assign(trace, {
+                    type: 'mesh3d',
+                    z: computeEdgeLines(edges, graphObject.nodesById, 'z'),
+                });
+            }
+            Object.assign(trace, config);
+            return trace;
+        }
+
+        function getUpdateMenus(graph, data) {
+            var menus = [];
+
+            var msizes = data.reduce(function(res, trace) {
                 if ('marker' in trace) {
-                    res.push(trace['marker']['size']);
+                    res.push(trace.marker.size);
                 } else {
                     res.push([]);
                 }
                 return res;
             }, []);
-            updatemenus.push({
+            // restrict to current traces to avoid misbehavior on custom selection traces addition
+            var tindexes = [...Array(data.length).keys()];
+            menus.push({
                 type: 'buttons',
                 x: 0.40, xanchor: 'left',
                 // size is shown by default -> inactive
@@ -275,39 +321,28 @@
                     label: 'Hide Node Sizes',
                     method: 'restyle',
                     // toggle args
-                    args: ['marker.size', '6'],
-                    args2:  ['marker.size', node_sizes],
+                    args: ['marker.size', '6', tindexes],
+                    args2: ['marker.size', msizes, tindexes],
                 }],
             });
 
-            var marker_opacities = []
-            var line_width_on = []
-            for (var trace of data) {
-                if ('marker' in trace) {
-                    marker_opacities.push(trace['marker']['opacity']);
-                    line_width_on.push("");
-                } else if ('line' in trace) {
-                    marker_opacities.push("");
-                    line_width_on.push(trace['line']['width']);
-                }
-            }
-            updatemenus.push({
+            menus.push({
                 type: 'dropdown',
                 direction: 'down',
                 x: 0.55, xanchor: 'center',
                 buttons: [{
-                    label: 'Highlight',
-                    method: 'restyle',
-                    args: [{'marker.opacity': marker_opacities, 'line.width': line_width_on}],
-                }, {
                     label: 'Unhighlight',
                     method: 'restyle',
                     args: [{'marker.opacity': 0.1, 'line.width': 0.1}],
+                }, {
+                    label: 'Highlight',
+                    method: 'restyle',
+                    args: [{'marker.opacity': DEFAULT_MARKER_OPACITY, 'line.width': DEFAULT_LINE_WIDTH}],
                 }],
             });
 
-            updatemenus.push({
-                name: traceSelectName,
+            menus.push({
+                name: TRACE_SELECT_NAME,
                 type: 'buttons',
                 direction: 'down',
                 x: 0.75, xanchor: 'center',
@@ -322,51 +357,76 @@
                 }],
             });
 
-            // TODO: package selection (?) Plotly menus are not user-friendly with large data
+            // TODO: package selection (?) Plotly menus are not user-friendly with large data...
 
-// var filterbuttons = [{
-// label: 'Filter on Bundle',
-// method: 'skip',
-// execute: false,
-// }];
-// var bundles = fig.nodes.filter(function(node) {return node.type == 'BUNDLE'});
-// for (var i = 0; i < bundles.length; i++) {
-// filterbuttons.push({
-// label: bundles[i]['label'],
-// method: 'skip',
-// execute: true,
-// });
-// }
-// updatemenus.push({
-// type: 'dropdown',
-// direction: 'down',
-// x: 0.75, xanchor: 'center',
-// buttons: filterbuttons,
-// });
-
-            return updatemenus;
+            return menus;
         }
 
-        function getAnnotations(graph, fig, data) {
-            // XXX TODO
-            var ann = [{
-                x: 1, xanchor: 'left',
-                y: 1, yanchor: 'bottom',
-                // text: '<select class="bundleselector2"><option value="" selected disabled hidden="hidden">Filter on
-                // Bundle</option></select>',
-                text: '<span class="bundleselector2">blaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaah</span><a href="http:www.google.com">yyooo</a>',
-
-                showarrow: false,
-            }];
-            return [];
+        function setClearSelectionButtonVisible(graph, visible) {
+            var gd = document.getElementById(graph);
+            for (var menu of gd.layout.updatemenus) {
+                if (menu.name == TRACE_SELECT_NAME) {
+                    menu.visible = visible;
+                    break;
+                }
+            }
         }
 
+        function initSelectTraces(graph, is3D) {
+            // create specific traces for selection
+            var lines = {
+                    name: TRACE_SELECT_NAME,
+                    mode: 'lines',
+                    type: 'scattergl',
+                    legendgroup: TRACE_SELECT_NAME,
+                    hoverinfo: 'none',
+                    x: [], // to be filled according to selection
+                    y: [], // to be filled according to selection
+                    z: [], // to be filled according to selection
+                    customdata: [], // to be filled according to selection
+                    line: {
+                        color: [], // to be filled according to selection
+                        width: DEFAULT_LINE_WIDTH,
+                    },
+            },
+            markers = {
+                    name: TRACE_SELECT_NAME + '(Edge Labels)',
+                    mode: 'markers+text',
+                    type: 'scattergl',
+                    legendgroup: TRACE_SELECT_NAME,
+                    showlegend: false,
+                    hoverinfo: 'text',
+                    x: [], // to be filled according to selection
+                    y: [], // to be filled according to selection
+                    z: [], // to be filled according to selection
+                    customdata: [], // to be filled according to selection
+                    marker: {
+                        text: [], // to be filled according to selection
+                        symbol: [], // to be filled according to selection
+                        color: [], // to be filled according to selection
+                        size: [], // to be filled according to selection
+                        opacity: DEFAULT_MARKER_OPACITY,
+                        line: {
+                            color: 'rgb(50,50,50)',
+                            width: 0.5
+                        },
+                    },
+            };
+            if (is3D) {
+                lines['type'] = 'scatter3d';
+                markers['type'] = 'scatter3d';
+            }
+            return [lines, markers];
+        }
+
+        // should return [0, 1] on selection, [] otherwise
         function getSelectionTraceIndexes(graph) {
             var gd = document.getElementById(graph);
             var tindexes = [];
             for (var i = 0; i < gd.data.length; i++) {
-                if (gd.data[i]['name'].startsWith(traceSelectName)) {
+                if ((gd.data[i].name) && gd.data[i].name.startsWith(TRACE_SELECT_NAME)) {
                     tindexes.push(i);
+                } else {
                     // do not bother going further: selection traces are prepended
                     break;
                 }
@@ -374,124 +434,141 @@
             return tindexes;
         }
 
-        function selectNode(graph, fig, data, doubleclick) {
-            var selection = data.points[0];
-            if (!(selection.customdata)) {
-                console.log("Cannot select " + selection);
-                return;
-            }
-            
-
-            // retrieve customdata for selection, assume invalid selection if not avail
-            var stype = selection.customdata.type;
-            if (stype == 'edgemarker') {
-                // retrieve corresponding edge thanks to curveNumber: customdata represents index previous trace holding
-                // edges
-                var iindex = selection.customdata.value,
-                tindex = selection.curveNumber;
-
-                // add edge to the selection trace, annotate source and target markers, and annotate central edge marker
-                // too
-
-                // if doubleclicked: resolve source and target nodes and act as if they had been double-clicked too
-                if (doubleclick) {
-                    
-                }
-
-            } else if (stype = 'node') {
-                var type = selection.customdata.nodetype,
-                id = selection.customdata.id;
-                // add node to the new trace and annotate it
-                
-                
-                // if doubleclicked, resolve relations and act as if each edge had been clicked
-                if (doubleclick) {
-                    
-                }
-                
-                
-            }
-
-            // create the trace from scratch
-            console.log("create trace");
-            console.log(graph);
-            console.log(data);
-            var trace1 = {
-                    x: [1, 2, 3, 4],
-                    y: [0, 2, 3, 5],
-                    fill: 'tozeroy',
-                    type: 'scatter',
-                    mode: 'none',
-                    name: traceSelectName,
-            };
-            Plotly.addTraces(graph, trace1, 0);
-
-            // add a specific single trace to be selected, adding to existing traces if needed
-            // XXX handle annotations
-// var nodes = type ? fig.nodes.filter(function(node) {return node.type == type}) : fig.nodes;
-// var name = type ? nodeLabel(type) : "Nodes";
-// var dict = {
-// name: name,
-// mode: 'markers',
-// type: 'scatter',
-// x: nodes.map(node => node['x']),
-// y: nodes.map(node => node['y']),
-// hoverinfo: 'text',
-// text: nodes.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight:
-// ${node.weight}`),
-// };
-// if (is3D(fig.type)) {
-// Object.assign(dict, {
-// type: 'scatter3d',
-// z: nodes.map(node => node['z'])
-// });
-// }
-// var marker = {
-// symbol: nodeSymbol(type),
-// color: nodes.map(node => nodeColor(node.category)),
-// colorscale: 'Viridis',
-// size: nodes.map(node => node['weight']*5),
-// opacity: 0.8,
-// line: {
-// color: 'rgb(50,50,50)',
-// width: 0.5
-// },
-// };
-// Object.assign(dict, config);
-// dict['marker'] = Object.assign({}, marker, config.marker);
-
-// return dict;
-
-
-
-        };
-
-        function selectBundle(bundle, fig) {
-            console.log("select bundle " + bundle);
-            console.log("fig: " + fig);
-        };
-
-        function clearSelections(graph, data) {
+        function clearSelections(graph) {
             setClearSelectionButtonVisible(graph, false);
             Plotly.deleteTraces(graph, getSelectionTraceIndexes(graph));
+            // highlight again all traces
+            Plotly.restyle(graph, {'marker.opacity': DEFAULT_MARKER_OPACITY, 'line.width': DEFAULT_LINE_WIDTH});
         }
 
-        function setClearSelectionButtonVisible(graph, visible) {
-            var gd = document.getElementById(graph);
-            for (var menu of gd.layout.updatemenus) {
-                if (menu.name == traceSelectName) {
-                    menu.visible = visible;
-                    break;
-                }
+
+        function selectNode(graphObject, lines, markers, id, point, propagate) {
+            var markerTemplate = {
+                    x: 0, // TBD
+                    y: 0, // TBD
+                    z: 0, // TBD
+                    customdata: null, // TBD
+                    text: null, // TBD
+                    symbol: null, // TBD
+                    color: null, // TBD
+                    size: null, // TBD
             }
+
+            if (point) {
+                // get directly node text from it, as well as symbol, color, etc..
+                // also consider only this marker needs to be annotated
+                console.log("point: ", point);
+            }
+
+            if (!propagate) {
+                return;
+            }
+
+            // resolve relations and maybe act as if each edge target had been clicked, depending on its type
         }
-        
-        function initBundleSelect(graph, fig, options) {
+
+        function selectEdge(graphObject, lines, markers, id, point) {
+            var lineTemplate = {
+                    x: 0, // TBD
+                    y: 0, // TBD
+                    z: 0, // TBD
+                    customdata: null, // TBD
+                    color: null, // TBD
+            }
+            var markerTemplate = {
+                    x: 0, // TBD
+                    y: 0, // TBD
+                    z: 0, // TBD
+                    customdata: null, // TBD
+                    text: null, // TBD
+                    symbol: null, // TBD
+                    color: null, // TBD
+                    size: null, // TBD
+            }
+            var edge = graphObject.edgesById[id];
+            if (!edge) {
+                console.log("Edge not found: " + id);
+                return;
+            }
+
+            if (point) {
+                // get directly node text from it, as well as symbol, color, etc..
+                // also consider only this marker needs to be annotated
+                console.log("point: ", point);
+                markerTemplate.text = point.text;
+            }
+
+            // trace same edge than the one that triggered the click
+
+            // push same intermediate nodes with same text than the triggered one on the middle-edge marker only
+
+            // add edge to the selection trace, annotate source and target markers, and annotate central edge marker
+            // too
+
+            // handle source and target selection
+            selectNode(graphObject, lines, markers, edge.source, null, false);
+            selectNode(graphObject, lines, markers, edge.target, null, false);
+        }
+
+        function selectMarker(graphObject, point) {
+            var tindexes = getSelectionTraceIndexes(graphObject.graph),
+            created = tindexes.length > 1;
+
+            var lines, markers;
+            if (created) {
+                // fetch existing traces
+                var gd = document.getElementById(graphObject.graph);
+                lines = gd.data[tindexes[0]];
+                markers = gd.data[tindexes[1]];
+            } else {
+                var traces = initSelectTraces(graphObject.graph, graphObject.is3D);
+                lines = traces[0], markers = traces[1];
+            }
+
+            if (point.customdata.selected) {
+                console.log("Marker already selected");
+                return;
+            }
+
+            // retrieve customdata for selection, assume invalid selection if not avail
+            var type = point.customdata.type;
+            if (type == 'node') {
+                selectNode(graphObject, lines, markers, point.customdata.id, point, true);
+            } else if (type = 'edgemarker') {
+                selectEdge(graphObject, lines, markers, point.customdata.id, point);
+            } else {
+                console.log('Unhandled selection of marker with type ', type);
+                return;
+            }
+
+            if (created) {
+                Plotly.update(graphObject.graph, [lines, markers], 0);
+            } else {
+                // cleanup any potential remnant // should not happen
+                Plotly.deleteTraces(graphObject.graph, tindexes);
+                setClearSelectionButtonVisible(graphObject.graph, true);
+                // unhighlight all other traces first
+                Plotly.restyle(graphObject.graph, {'marker.opacity': 0.1, 'line.width': 0.1});
+                // add them to beginning of traces, lines first
+                Plotly.addTraces(graphObject.graph, markers, 0);
+                Plotly.addTraces(graphObject.graph, lines, 0);
+            }
+
+            console.log("selection done");
+        }
+
+        function selectBundle(graphObject, bundle) {
+            console.log("select bundle ", bundle);
+            selectMarker(graphObject, {
+                customdata: nodeMarkerInfo({node: bundle}),
+            });
+        };
+
+        function initBundleSelect(graphObject, bundles, options) {
             if (!options.bundleselector) {
                 return;
             }
-            var bundles = fig.nodes.filter(function(node) {return node.type == 'BUNDLE'});
-            var gd = document.getElementById(graph);
+            var gd = document.getElementById(graphObject.graph);
             var selector = gd.parentNode.querySelector(options.bundleselector);
             var firstOption = selector.querySelector('option');
             selector.textContent = '';
@@ -505,89 +582,126 @@
                 selector.appendChild(currentOption);
             }
             selector.addEventListener('change', function() {
-                selectBundle(selector.value, fig);
+                if (!options.selectedbundles.includes(selector.value)) {
+                    options.selectedbundles.push(selector.value);
+                    selectBundle(graphObject, selector.value);
+                }
             }, false);
-            
-            // XX maybe init selection based on current value too
+
+            // keep track of selected bundles in options, to avoid tracking them again through here
+            options.selectedbundles = [];
+            // init selection based on current value too
+            var selected = options.selectedbundle;
+            if (selected) {
+                options.selectedbundles.push(selected);
+                selectBundle(graphObject, selected);
+            }
+
+            return selector;
         }
 
-        function _render(datasource, datasource_title, graph, fig, options) {
-            if (options['circ']) {
-                _render_circ(datasource, datasource_title, graph, fig, options);
-            } else {
-                _render_basic(datasource, datasource_title, graph, fig, options);
-            }
-        };
-
-        function _render_circ(datasource, datasource_title, graph, fig, options) {
+        function renderCirc(graph, fig, options) {
             // TODO
         }
 
-        function _render_basic(datasource, datasource_title, graph, fig, options) {
-            var nodes_by_key = fig.nodes.reduce(function(map, node) {
+        function renderBasic(graph, fig, options) {
+            var is3D = is3DGraph(fig.type),
+            nodesById = fig.nodes.reduce(function(map, node) {
                 map[node.id] = node;
                 return map;
             }, {});
+            // assign ids to edges for easier management in selection, if missing, and fill references in edgesByNodeId map
+            var edgesByNodeId = {},
+            edgesById = {};
+            for (var i = 0; i < fig.edges.length; i++) {
+                var edge = fig.edges[i];
+                if (!(edge.id)) {
+                    edge.id = i;
+                }
+                edgesById[edge.id] = edge;
+                if (!edgesByNodeId[edge.source]) {
+                    edgesByNodeId[edge.source] = [];
+                }
+                edgesByNodeId[edge.source].push(edge.id);
+                if (!edgesByNodeId[edge.target]) {
+                    edgesByNodeId[edge.target] = [];
+                }
+                edgesByNodeId[edge.target].push(edge.id);
+            }
+            // wrap these helpers inside a graphObject, to be sent to methods
+            var graphObject = {
+                    'graph': graph,
+                    'is3D': is3D,
+                    'nodesById': nodesById,
+                    'edgesById': edgesById,
+                    'edgesByNodeId': edgesByNodeId,
+                    'data': fig,
+            }
 
             var containsconf = {
                     legendgroup: 'contains',
                     visible: 'legendonly',
             }
             var data = [
-                ...traceNodes(fig, 'BUNDLE', {legendgroup: 'bundles'}),
-                ...traceEdges(fig, nodes_by_key, 'REQUIRES', {legendgroup: 'bundles'}),
-                ...traceNodes(fig, 'COMPONENT', {legendgroup: 'components'}),
-                ...traceEdges(fig, nodes_by_key, 'SOFT_REQUIRES', {legendgroup: 'components'}),
-                ...traceNodes(fig, 'EXTENSION_POINT', {legendgroup: 'xps'}),
-                ...traceNodes(fig, 'CONTRIBUTION', {legendgroup: 'xps'}),
-                ...traceEdges(fig, nodes_by_key, 'REFERENCES', {legendgroup: 'xps'}),
+                ...traceNodes(graphObject, 'BUNDLE', {legendgroup: 'bundles'}),
+                ...traceEdges(graphObject, 'REQUIRES', {legendgroup: 'bundles'}),
+                ...traceNodes(graphObject, 'COMPONENT', {legendgroup: 'components'}),
+                ...traceEdges(graphObject, 'SOFT_REQUIRES', {legendgroup: 'components'}),
+                ...traceNodes(graphObject, 'EXTENSION_POINT', {legendgroup: 'xps'}),
+                ...traceNodes(graphObject, 'CONTRIBUTION', {legendgroup: 'xps'}),
+                ...traceEdges(graphObject, 'REFERENCES', {legendgroup: 'xps'}),
                 ];
 
             // another set of traces for containment, seems to be more efficient than 'groupby' transform
             for (var type of nodeTypes) {
-                data.push(...traceNodes(fig, type, containsconf));
+                data.push(...traceNodes(graphObject, type, containsconf));
             }
             data = data.concat([
-                ...traceEdges(fig, nodes_by_key, 'CONTAINS',  containsconf),
-// traceMesh(fig, nodes_by_key, 'CONTAINS', Object.assign({}, containsconf, {
-// name: 'Mesh Tentative (WIP)',
-// })),
+                ...traceEdges(graphObject, 'CONTAINS', containsconf),
+                //traceMesh(graphObject, 'CONTAINS', Object.assign({}, containsconf, {
+                //    name: 'Mesh Tentative (WIP)',
+                //})),
                 ]);
 
-            var layout = getLayout(`<b>${fig.title}</b> (${datasource_title})<br><i>${fig.description}</i>`, is3D(fig.type), {
-                updatemenus: getUpdatemenus(graph, fig, data),
-                annotations: getAnnotations(graph, fig, data),
+            var title = `<b>${fig.title}</b>`;
+            if (options.datasourcetitle) {
+                title += ` (${options.datasourcetitle})`;
+            }
+            if (fig.description) {
+                title += `<br><i>${fig.description}</i>`;
+            }
+            var layout = getLayout(title, is3D, {
+                updatemenus: getUpdateMenus(graph, data),
             });
 
             Plotly.newPlot(graph, data, layout, {responsive: true});
 
+            // now that plot is created, empty original data in graphObject, passed on to listeners
+            delete graphObject.data;
+
+            // init and hook bundle selection
+            // disabled for now: makes the page freeze for some reason
+            // var bundles = fig.nodes.filter(function(node) {return node.type == 'BUNDLE'});
+            // initBundleSelect(graphObject, bundles, options);
+
             // events management
             var gd = document.getElementById(graph);
-            gd.on('plotly_afterplot', function() {
-                initBundleSelect(graph, fig, options);
-            });
             // avoid recursion bug, see https://github.com/plotly/plotly.js/issues/1025
-            var clickcalled = false;
+            var clickCalled = false;
             gd.on('plotly_click', function(data) {
-                if (!clickcalled) {
-                    clickcalled = true;
-                    console.log('click');
-                    selectNode(graph, fig, data, false);
-                    clickcalled = false;
+                if (!clickCalled) {
+                    clickCalled = true;
+                    var point = data.points[0];
+                    if (point.customdata) {
+                        selectMarker(graphObject, point);
+                    }
+                    clickCalled = false;
                 }
             });
-            var dblclickcalled = false;
-            gd.on('plotly_doubleclick', function(data) {
-                if (!dblclickcalled) {
-                    dblclickcalled = true;
-                    console.log('double click');
-                    selectNode(graph, fig, data, true);
-                    dblclickcalled = false;
-                }
-            });
+            // custom menus management
             gd.on('plotly_buttonclicked', function(data) {
-                if (data.menu.name == traceSelectName) {
-                    clearSelections(graph, data);
+                if (data.menu.name == TRACE_SELECT_NAME) {
+                    clearSelections(graph);
                 };
             });
         }
