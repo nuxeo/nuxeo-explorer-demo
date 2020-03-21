@@ -24,6 +24,8 @@
             'BASIC_LAYOUT_3D': '3d',
         })[type];
 
+        const graphElement = (graphDiv) => document.getElementById(graphDiv);
+
         const NODE_TYPES = {
                 'BUNDLE': {
                     label: 'Bundles',
@@ -316,30 +318,35 @@
             return trace;
         }
 
+        function getRegularTraceIndexes(graph) {
+            var indexes = [...Array(graphElement(graph.div).data.length).keys()];
+            for (var i of TRACE_SELECT_INDEXES) {
+                indexes.splice(indexes.indexOf(TRACE_SELECT_INDEXES[i]), 1);
+            }
+            return indexes;
+        }
+
         function traceSelections(graph) {
             // create specific traces for selection
             var lines = {
                     name: TRACE_SELECT_NAME,
                     mode: 'lines',
-                    type: 'scattergl',
+                    type: 'scatter',
                     legendgroup: TRACE_SELECT_NAME,
                     hoverinfo: 'none',
-                    ids: [], // to be filled according to selection, useful to detect dupe selections
                     x: [], // to be filled according to selection
                     y: [], // to be filled according to selection
-                    customdata: [], // to be filled according to selection
                     line: {
                         color: [], // to be filled according to selection
                         width: DEFAULT_EDGE_WIDTH,
                     },
             },
             markers = {
-                    name: TRACE_SELECT_NAME + ' (Edge Labels)',
+                    name: TRACE_SELECT_NAME + ' (Markers)',
                     mode: 'markers+text',
                     type: 'scattergl',
                     legendgroup: TRACE_SELECT_NAME,
                     showlegend: false,
-                    ids: [], // to be filled according to selection, useful to detect dupe selections
                     x: [], // to be filled according to selection
                     y: [], // to be filled according to selection
                     customdata: [], // to be filled according to selection
@@ -370,55 +377,91 @@
         }
 
         function clearSelections(graph) {
-            setClearSelectionButtonVisible(graph.divid, false);
-            // update selection traces with empty initial traces
-            var traces = traceSelections(graph);
-            // FIXME
-            Plotly.update(graph.divid, traces, {}, TRACE_SELECT_INDEXES);
-            console.log(document.getElementById(graph.divid).data);
+            setClearSelectionButtonVisible(graph.div, false);
+            // replace selection traces with empty initial ones
+            Plotly.deleteTraces(graph.div, TRACE_SELECT_INDEXES);
+            Plotly.addTraces(graph.div, traceSelections(graph), TRACE_SELECT_INDEXES);
+            // reset dupe detection helpers
+            graph.selectedEdges = [];
+            graph.selectedNodes = [];
             // highlight again all other traces
-            setHighlightButtonActive(graph.divid, true);
-            var tindexes = [...Array(document.getElementById(graph.divid).data.length).keys()].slice(TRACE_SELECT_INDEXES.length);
-            Plotly.restyle(graph.divid, HIGHLIGHT_LAYOUT_UPDATE, tindexes);
+            setHighlightButtonActive(graph.div, true);
+            Plotly.restyle(graph.div, HIGHLIGHT_LAYOUT_UPDATE, getRegularTraceIndexes(graph));
         }
 
-        function selectNode(graph, lines, markers, id, point, doTarget) {
-            var markerTemplate = {
-                    x: 0, // TBD
-                    y: 0, // TBD
-                    z: 0, // TBD
-                    customdata: null, // TBD
-                    text: null, // TBD
-                    symbol: null, // TBD
-                    color: null, // TBD
-                    size: null, // TBD
+        function getSelectNodeUpdate(graph, id, point, doTarget) {
+            var node = graph.nodesById[id];
+            if (!node) {
+                console.log("Invalid node with id ", id);
+                return;
             }
-
-            if (point) {
-                // get directly node text from it, as well as symbol, color, etc..
-                // also consider only this marker needs to be annotated
-                console.log("point: ", point);
-            }
-
-            if (!doTarget) {
+            if (graph.selectedNodes.includes(id)) {
+                console.log("Node already selected: ", id);
                 return;
             }
 
+            // rebuild other info for new markers and lines
+            var text, symbol, color, size, customdata, pointx;
+            text = edgeLineMarkerText(edge, source, target);
+            size = 2;
+            if (point) {
 
-//          return {
-//          type: 'node',
-//          id: node.id,
-//          label: node.label,
-//          nodetype: node.type,
-//          category: node.category,
-//          };
+            // rebuild other info for new markers and lines
+            var text, symbol, color, size, customdata, pointx;
+            text = edgeLineMarkerText(edge, source, target);
+            size = 2;
+            if (point) {
+                symbol = point.data.marker.symbol;
+                // colors are sometimes adjusted on edges
+                var colors = point.data.marker.color;
+                color = Array.isArray(colors) ? colors[point.pointNumber] : colors;
+                customdata = Object.assign({}, point.customdata, {'selected': true});
+                pointx = point.x;
+            } else {
+                // recalculate information
+                symbol = edgeLineMarkerSymbol(graph);
+                color = edgeColor(edge.type);
+                customdata = Object.assign({}, edgeLineMarkerCustomData(edge, graph.nodesById), {'selected': true});
+            }
 
+            graph.selectedEdges.push('NXEdge' + id);
+            // trace same edge than the one that was selected
+            var update = {
+                    lines: {
+                        x: [[source.x, target.x, null]],
+                        y: [[source.y, target.y, null]],
+                        // FIXME: dies not support multiple values, so cannot change the color according to edge data...
+                        'line.color': [[color]],
+                    },
+                    // add again associated edge line markers, annotating the central one
+                    markers: {
+                        x: [computeLineMarkers(source.x, target.x)],
+                        y: [computeLineMarkers(source.y, target.y)],
+                        customdata: [computeLineMarkersData([customdata])],
+                        'marker.text': [['', text, '']],
+                        'marker.hovertext': [[text, '', text]],
+                        'marker.symbol': [computeLineMarkersData([symbol])],
+                        'marker.color': [computeLineMarkersData([color])],
+                        'marker.size': [computeLineMarkersData([size])],
+                    },
+            };
+            if (graph.is3D) {
+                Object.assign(update.lines, {
+                    z: [[source.z, target.z, null]],
+                });
+                Object.assign(update.markers, {
+                    z: [computeLineMarkers(source.z, target.z)],
+                });
+            }
 
+            // handle source and target selection
+//          selectNode(graph, lines, markers, edge.source, null, false);
+//          selectNode(graph, lines, markers, edge.target, null, false);
 
-            // resolve relations and maybe act as if each edge target had been clicked, depending on its type
+            return update;
         }
 
-        function selectEdge(graph, lines, markers, id, point, doTarget) {
+        function getSelectEdgeUpdate(graph, id, point, doTarget) {
             var edge = graph.edgesById[id];
             if (!edge) {
                 console.log("Invalid edge with id ", id);
@@ -430,7 +473,7 @@
                 console.log("Invalid edge with id ", id);
                 return;
             }
-            if (lines.ids.includes(id)) {
+            if (graph.selectedEdges.includes(id)) {
                 console.log("Edge already selected: ", id);
                 return;
             }
@@ -454,38 +497,41 @@
             }
 
             // trace same edge than the one that was selected
-            lines.ids.push('NXEdge' + id);
-            lines.x.push(source.x, target.x, null);
-            lines.y.push(source.y, target.y, null);
+            var update = {
+                    lines: {
+                        x: [[source.x, target.x, null]],
+                        y: [[source.y, target.y, null]],
+                        // FIXME: dies not support multiple values, so cannot change the color according to edge data...
+                        'line.color': [[color]],
+                    },
+                    // add again associated edge line markers, annotating the central one
+                    markers: {
+                        x: [computeLineMarkers(source.x, target.x)],
+                        y: [computeLineMarkers(source.y, target.y)],
+                        customdata: [computeLineMarkersData([customdata])],
+                        'marker.text': [['', text, '']],
+                        'marker.hovertext': [[text, '', text]],
+                        'marker.symbol': [computeLineMarkersData([symbol])],
+                        'marker.color': [computeLineMarkersData([color])],
+                        'marker.size': [computeLineMarkersData([size])],
+                    },
+                    selectedEdges: ['NXEdge' + id],
+            };
             if (graph.is3D) {
-                lines.z.push(source.z, target.z, null);
+                Object.assign(update.lines, {
+                    z: [[source.z, target.z, null]],
+                });
+                Object.assign(update.markers, {
+                    z: [computeLineMarkers(source.z, target.z)],
+                });
             }
-            lines.customdata.push(customdata);
-            lines.line.color.push(color);
-
-            // add again associated edge line markers, annotating the central one
-            var markerFakeId = 'NXEdge' + id;
-            markers.ids.push(markerFakeId, markerFakeId, markerFakeId);
-            markers.x.push(...computeLineMarkers(source.x, target.x));
-            markers.y.push(...computeLineMarkers(source.y, target.y));
-            if (graph.is3D) {
-                markers.z.push(...computeLineMarkers(source.z, target.z));
-            }
-            markers.customdata.push(...computeLineMarkersData([customdata]));
-            // add text only on the middle one
-            markers.marker.text.push('', text, '');
-            markers.marker.hovertext.push(text, '', text);
-            markers.marker.symbol.push(...computeLineMarkersData([symbol]));
-            markers.marker.color.push(...computeLineMarkersData([color]));
-            markers.marker.size.push(...computeLineMarkersData([size]));
 
             // handle source and target selection
-//            selectNode(graph, lines, markers, edge.source, null, false);
-//            selectNode(graph, lines, markers, edge.target, null, false);
+//          selectNode(graph, lines, markers, edge.source, null, false);
+//          selectNode(graph, lines, markers, edge.target, null, false);
+
+            return update;
         }
-
-
-
 
         function selectMarker(graph, point) {
             if (point.customdata.selected) {
@@ -493,36 +539,38 @@
                 return;
             }
 
-            // retrieve customdata for selection, assume invalid selection if not avail
-            var gd = document.getElementById(graph.divid);
-            var lines = gd.data[TRACE_SELECT_INDEXES[0]];
-            var markers = gd.data[TRACE_SELECT_INDEXES[1]];
-
             var selectedpoint = point;
+            // handle bundle selection use case
             if (point.fake) {
-                // handle bundle selection from outside the graph context
                 selectedpoint = null;
             }
             var type = point.customdata.type;
+            var update;
             if (type == 'node') {
-                selectNode(graph, lines, markers, point.customdata.id, selectedpoint, true);
+                update = getSelectNodeUpdate(graph, point.customdata.id, selectedpoint, true);
             } else if (type = 'edgemarker') {
-                selectEdge(graph, lines, markers, point.customdata.id, selectedpoint);
+                update = getSelectEdgeUpdate(graph, point.customdata.id, selectedpoint);
             } else {
                 console.log('Unhandled selection of marker with type ', type);
                 return;
             }
-
-            setClearSelectionButtonVisible(graph.divid, true);
+            console.log(update);
+            
+            setClearSelectionButtonVisible(graph.div, true);
             // unhighlight all other traces
-            setHighlightButtonActive(graph.divid, false);
-            var tindexes = [...Array(document.getElementById(graph.divid).data.length).keys()].slice(TRACE_SELECT_INDEXES.length);
-            Plotly.restyle(graph.divid, UNHIGHLIGHT_LAYOUT_UPDATE, tindexes);
-            // update selection traces
-            // FIXME
-            Plotly.update(graph.divid, [lines, markers], {}, TRACE_SELECT_INDEXES);
-
+            setHighlightButtonActive(graph.div, false);
+            Plotly.restyle(graph.div, UNHIGHLIGHT_LAYOUT_UPDATE, getRegularTraceIndexes(graph));
+            // update selection traces selectively
+            console.log("graph1: ", graphElement(graph.div).data);
+            console.log("update lines: ", update.lines);
+            Plotly.extendTraces(graph.div, update.lines, [TRACE_SELECT_INDEXES[0]]);
+            console.log("graph2: ", graphElement(graph.div).data);
+            console.log("update markers: ", update.markers);
+            Plotly.extendTraces(graph.div, update.markers, [TRACE_SELECT_INDEXES[1]]);
+            console.log("graph3: ", graphElement(graph.div).data);
             console.log("selection done");
+            graph.selectedNodes.push(...update.selectedNodes);
+            graph.selectedEdges.push(...update.selectedEdges);
         }
 
         function selectBundle(graph, bundle) {
@@ -602,7 +650,7 @@
         }
 
         function setHighlightButtonActive(graphDiv, active) {
-            var gd = document.getElementById(graphDiv);
+            var gd = graphElement(graphDiv);
             for (var menu of gd.layout.updatemenus) {
                 if (menu.name == HIGHLIGHT_MENU_NAME) {
                     menu.active = active ? 0 : -1;
@@ -612,7 +660,7 @@
         }
 
         function setClearSelectionButtonVisible(graphDiv, visible) {
-            var gd = document.getElementById(graphDiv);
+            var gd = graphElement(graphDiv);
             for (var menu of gd.layout.updatemenus) {
                 if (menu.name == TRACE_SELECT_NAME) {
                     menu.visible = visible;
@@ -625,7 +673,7 @@
             if (!options.bundleselector) {
                 return;
             }
-            var gd = document.getElementById(graph.divid);
+            var gd = graphElement(graph.div);
             var selector = gd.parentNode.querySelector(options.bundleselector);
             var firstOption = selector.querySelector('option');
             selector.textContent = '';
@@ -667,7 +715,8 @@
                 map[node.id] = node;
                 return map;
             }, {});
-            // assign ids to edges for easier management in selection, if missing, and fill references in edgesByNodeId map
+            // assign ids to edges for easier management in selection, if missing, and fill references in edgesByNodeId
+            // map
             var edgesByNodeId = {},
             edgesById = {};
             for (var i = 0; i < fig.edges.length; i++) {
@@ -685,12 +734,15 @@
             }
             // wrap these helpers inside a graph object
             var graph = {
-                    'divid': graphDiv,
-                    'is3D': is3D,
-                    'nodesById': nodesById,
-                    'edgesById': edgesById,
-                    'edgesByNodeId': edgesByNodeId,
-                    'data': fig,
+                    div: graphDiv,
+                    is3D: is3D,
+                    nodesById: nodesById,
+                    edgesById: edgesById,
+                    edgesByNodeId: edgesByNodeId,
+                    data: fig,
+                    // selection management
+                    selectedEdges: [],
+                    selectedNodes: [],
             }
 
             var data = [
@@ -706,7 +758,8 @@
                 ...traceEdges(graph, 'REFERENCES', {legendgroup: 'xps'}),
                 ];
 
-            // push another set of traces for containment (seems to be more efficient than using the 'groupby' transform)
+            // push another set of traces for containment (seems to be more efficient than using the 'groupby'
+            // transform)
             var containsconf = {
                     legendgroup: 'contains',
                     visible: 'legendonly',
@@ -716,9 +769,9 @@
             }
             data = data.concat([
                 ...traceEdges(graph, 'CONTAINS', containsconf),
-                //traceMesh(graph, 'CONTAINS', Object.assign({}, containsconf, {
-                //    name: 'Mesh Tentative (WIP)',
-                //})),
+                // traceMesh(graph, 'CONTAINS', Object.assign({}, containsconf, {
+                // name: 'Mesh Tentative (WIP)',
+                // })),
                 ]);
 
             // now that plot is created, empty original data in graph, passed on to listeners
@@ -738,8 +791,6 @@
                     responsive: true,
             };
 
-            console.log(graph);
-            console.log(data);
             // plot creation
             Plotly.newPlot(graphDiv, data, layout, {responsive: true});
 
@@ -749,12 +800,12 @@
             // initBundleSelect(graph, bundles, options);
 
             // events management
-            var gd = document.getElementById(graphDiv);
+            var gd = graphElement(graphDiv);
             // avoid recursion bug, see https://github.com/plotly/plotly.js/issues/1025
             var clickCalled = false;
             gd.on('plotly_click', function(data) {
-                console.log(data);
                 if (!clickCalled) {
+                    console.log("click: ", data);
                     clickCalled = true;
                     var point = data.points[0];
                     if (point.customdata) {
