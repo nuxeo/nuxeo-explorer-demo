@@ -105,7 +105,7 @@
 
         // handle selections with this trick since marker opacity and line width do not accept arrays in 3D...
         // see https://github.com/plotly/plotly.js/issues/2186
-        function highlightColor(color, doHighlight) {
+        const highlightColor = (color, doHighlight) => {
             var alpha = parseFloat(color.slice(color.lastIndexOf(',') + 1, color.lastIndexOf(')')));
             if (!doHighlight) {
                 // don't change selected opacities
@@ -184,6 +184,8 @@
                 }
             });
         };
+
+        // initial rendering
 
         function getBasicLayout(nxgraph) {
             var axis = {
@@ -403,6 +405,128 @@
             return (sourceaxis + targetaxis) / 2;
         }
 
+        // selection management
+
+        function getInitialTraceUpdates(traces) {
+            var traceupdates = {};
+            for (var ti = 0; ti < traces.length; ti++) {
+                // init with info that will be impacted by selection
+                var trace = traces[ti];
+                traceupdates[ti]['selected'] = [...trace.selected];
+                if (Array.isArray(trace.marker.color)) {
+                    traceupdates[ti]['colors'] = [...trace.marker.color];
+                } else {
+                    traceupdates[ti]['colors'] = trace.x.map(item => trace.marker.color);
+                }
+            }
+            console.log("init tu ", traceupdates);
+            return traceupdates;
+        }
+
+        function performTraceUpdates(lnxgraph, traces, traceupdates) {
+            // XX check if it can be done all at once!
+            for (var ti = 0; ti < traces.length; ti++) {
+                // init with info that will be impacted by selection
+                var trace = traces[ti];
+                console.log("Updating trace " + trace.name + ": ", trace);
+                Plotly.restyle(lnxgraph.div, {
+                    'marker.color': [traceupdates[ti]['colors']],
+                    'selected': [traceupdates[ti]['selected']]
+                }, [ti]);
+                console.log("Updated trace " + trace.name + ": ", graphElement(lnxgraph.div).data[ti]);
+            }
+        }
+
+        function getSelectionInfo(lnxgraph, id, trace, toggle) {
+            var indexes = trace.references[id];
+            if (!indexes) {
+                return null;
+            }
+            var index = indexes[0];
+            if (trace.tracetype == TRACE_TYPES.EDGE) {
+                // annotate the middle marker
+                index = indexes[parseInt(indexes.length / 2)];
+            }
+            var info = {
+                x: trace.x[index],
+                y: trace.y[index],
+                links: trace.customdata[index].links,
+            }
+            if (lnxgraph.is3D) {
+                Object.assign(info, { z: trace.z[index] });
+            }
+            if (!toggle) {
+                // fill up other info that will be useful for annotation creation
+                Object.assign(info, {
+                    annotationtext: trace.customdata[index].annotation,
+                    isEdge: trace.tracetype != TRACE_TYPES.NODE, // XX: flat edges should not be flagged as is maybe
+                });
+                var color = trace.marker.color;
+                if (Array.isArray(color)) {
+                    color = trace.marker.color[index];
+                }
+                var color = trace.marker.color;
+                if (Array.isArray(color)) {
+                    color = trace.marker.color[index];
+                }
+                if (trace.tracetype == TRACE_TYPES.NODE) {
+                    var textcolor = color > 1 ? 'black' : 'white';
+                    Object.assign(info, { color: color, textcolor: textcolor });
+                } else if (trace.tracetype == TRACE_TYPES.EDGE) {
+                    Object.assign(info, { color: color, textcolor: 'black' });
+                }
+            }
+            console.log("selection info for " + id + ": ", info);
+            return info;
+        }
+
+        // change selected points and relations to:
+        // - udpate colors on nodes (handling rgb opacity in 3D)
+        // - update width on edges (on 2D)
+        // - show corresponding annotations on the fly
+        function selectPoint(lnxgraph, point) {
+            var isFirstTime = lnxgraph.selected.length == 0;
+            if (isFirstTime) {
+                setClearSelectionsButtonVisible(lnxgraph.div, true);
+                setHighlightButtonActive(lnxgraph.div, false);
+            }
+            var gd = graphElement(lnxgraph.div);
+            var traces = gd.data;
+            var annotations = [];
+            // init but dereference annotations as the array will be changed by update
+            if (lnxgraph.is3D && gd.layout.scene.annotations) {
+                annotations = [...gd.layout.scene.annotations];
+            } else if (gd.layout.annotations) {
+                annotations = [...gd.layout.annotations];
+            }
+            var update = {
+                traces: traces,
+                annotations: annotations,
+                traceupdates: getInitialTraceUpdates(traces),
+            };
+
+            update = selectPointRecursive(lnxgraph, update, point, true, isFirstTime);
+            console.log("selectPoint update: ", update);
+
+            // perform updates trace by trace
+            performTraceUpdates(lnxgraph, traces, update.traceupdates);
+            // update annotations
+            var layout_update = {};
+            if (lnxgraph.is3D) {
+                layout_update = {
+                    scene: {
+                        annotations: update.annotations,
+                        // preserve camera eye position
+                        camera: graphElement(lnxgraph.div).layout.scene.camera,
+                    },
+                };
+            } else {
+                layout_update = { annotations: update.annotations };
+            }
+            console.log("selectPoint lupdate ", layout_update);
+            Plotly.relayout(lnxgraph.div, layout_update);
+        }
+
         function selectPointRecursive(lnxgraph, update, point, doTarget, isFirstTime) {
             console.log("selectPointRecursive: ", point);
             var markertype = point.customdata.markertype,
@@ -505,49 +629,6 @@
             return update;
         }
 
-        function getSelectionInfo(lnxgraph, id, trace, toggle) {
-            var indexes = trace.references[id];
-            if (!indexes) {
-                return null;
-            }
-            var index = indexes[0];
-            if (trace.tracetype == TRACE_TYPES.EDGE) {
-                // annotate the middle marker
-                index = indexes[parseInt(indexes.length / 2)];
-            }
-            var info = {
-                x: trace.x[index],
-                y: trace.y[index],
-                links: trace.customdata[index].links,
-            }
-            if (lnxgraph.is3D) {
-                Object.assign(info, { z: trace.z[index] });
-            }
-            if (!toggle) {
-                // fill up other info that will be useful for annotation creation
-                Object.assign(info, {
-                    annotationtext: trace.customdata[index].annotation,
-                    isEdge: trace.tracetype != TRACE_TYPES.NODE, // XX: flat edges should not be flagged as is maybe
-                });
-                var color = trace.marker.color;
-                if (Array.isArray(color)) {
-                    color = trace.marker.color[index];
-                }
-                var color = trace.marker.color;
-                if (Array.isArray(color)) {
-                    color = trace.marker.color[index];
-                }
-                if (trace.tracetype == TRACE_TYPES.NODE) {
-                    var textcolor = color > 1 ? 'black' : 'white';
-                    Object.assign(info, { color: color, textcolor: textcolor });
-                } else if (trace.tracetype == TRACE_TYPES.EDGE) {
-                    Object.assign(info, { color: color, textcolor: 'black' });
-                }
-            }
-            console.log("selection info for " + id + ": ", info);
-            return info;
-        }
-
         function removeAnnotation(lnxgraph, annotations, sinfo) {
             var aindex = null;
             var is3D = lnxgraph.is3D;
@@ -561,51 +642,40 @@
             return annotations;
         }
 
-        // change selected points and relations to:
-        // - udpate colors on nodes (handling rgb opacity in 3D)
-        // - update width on edges (on 2D)
-        // - show corresponding annotations on the fly
-        function selectPoint(lnxgraph, point) {
-            var isFirstTime = lnxgraph.selected.length == 0;
-            if (isFirstTime) {
-                setClearSelectionsButtonVisible(lnxgraph.div, true);
-                setHighlightButtonActive(lnxgraph.div, false);
+        function setHighlight(lnxgraph, doHighlight) {
+            var traces = graphElement(lnxgraph.div).data;
+            var traceupdates = getInitialTraceUpdates(traces);
+            for (var ti = 0; ti < traces.length; ti++) {
+                var tup = traceupdates[ti];
+                for (var i = 0; i < tup.length; i++) {
+                    // FIXME
+                    if (doHighlight) {
+                        tup[i] = highlightColor(tup[i], doHighlight);
+                    }
+                }
             }
-            var gd = graphElement(lnxgraph.div);
-            var traces = gd.data;
-            var annotations = [];
-            // init but dereference annotations as the array will be changed by update
-            if (lnxgraph.is3D && gd.layout.scene.annotations) {
-                annotations = [...gd.layout.scene.annotations];
-            } else if (gd.layout.annotations) {
-                annotations = [...gd.layout.annotations];
-            }
-            var update = {
-                traces: traces,
-                annotations: annotations,
-                traceupdates: getInitialTraceUpdates(traces),
-            };
+            performTraceUpdates(lnxgraph, traces, traceupdates);
+        }
 
-            update = selectPointRecursive(lnxgraph, update, point, true, isFirstTime);
-            console.log("selectPoint update: ", update);
-
-            // perform updates trace by trace
-            performTraceUpdates(lnxgraph, traces, update.traceupdates);
-            // update annotations
-            var layout_update = {};
+        function clearSelections(lnxgraph) {
+            setClearSelectionsButtonVisible(lnxgraph.div, false);
+            setHighlightButtonActive(lnxgraph.div, true);
+            // reset dupe detection helpers
+            lnxgraph.selected = [];
+            var up = {};
             if (lnxgraph.is3D) {
-                layout_update = {
+                up = {
                     scene: {
-                        annotations: update.annotations,
+                        annotations: [],
                         // preserve camera eye position
                         camera: graphElement(lnxgraph.div).layout.scene.camera,
                     },
                 };
             } else {
-                layout_update = { annotations: update.annotations };
+                up = { annotations: [] };
             }
-            console.log("selectPoint lupdate ", layout_update);
-            Plotly.relayout(lnxgraph.div, layout_update);
+            Plotly.relayout(lnxgraph.div, up);
+            setHighlight(lnxgraph, true);
         }
 
         function getUpdateMenus(traces) {
@@ -669,72 +739,6 @@
             // TODO: package selection (?) Plotly menus are not user-friendly with large data...
 
             return menus;
-        }
-
-        function getInitialTraceUpdates(traces) {
-            var traceupdates = {};
-            for (var ti = 0; ti < traces.length; ti++) {
-                // init with info that will be impacted by selection
-                var trace = traces[ti];
-                traceupdates[ti]['selected'] = [...trace.selected];
-                if (Array.isArray(trace.marker.color)) {
-                    traceupdates[ti]['colors'] = [...trace.marker.color];
-                } else {
-                    traceupdates[ti]['colors'] = trace.x.map(item => trace.marker.color);
-                }
-            }
-            console.log("init tu ", traceupdates);
-            return traceupdates;
-        }
-
-        function performTraceUpdates(lnxgraph, traces, traceupdates) {
-            // XX check if it can be done all at once!
-            for (var ti = 0; ti < traces.length; ti++) {
-                // init with info that will be impacted by selection
-                var trace = traces[ti];
-                console.log("Updating trace " + trace.name + ": ", trace);
-                Plotly.restyle(lnxgraph.div, {
-                    'marker.color': [traceupdates[ti]['colors']],
-                    'selected': [traceupdates[ti]['selected']]
-                }, [ti]);
-                console.log("Updated trace " + trace.name + ": ", graphElement(lnxgraph.div).data[ti]);
-            }
-        }
-
-        function setHighlight(lnxgraph, doHighlight) {
-            var traces = graphElement(lnxgraph.div).data;
-            var traceupdates = getInitialTraceUpdates(traces);
-            for (var ti = 0; ti < traces.length; ti++) {
-                var tup = traceupdates[ti];
-                for (var i = 0; i < tup.length; i++) {
-                    // FIXME
-                    if (doHighlight) {
-                        tup[i] = highlightColor(tup[i], doHighlight);
-                    }
-                }
-            }
-            performTraceUpdates(lnxgraph, traces, traceupdates);
-        }
-
-        function clearSelections(lnxgraph) {
-            setClearSelectionsButtonVisible(lnxgraph.div, false);
-            setHighlightButtonActive(lnxgraph.div, true);
-            // reset dupe detection helpers
-            lnxgraph.selected = [];
-            var up = {};
-            if (lnxgraph.is3D) {
-                up = {
-                    scene: {
-                        annotations: [],
-                        // preserve camera eye position
-                        camera: graphElement(lnxgraph.div).layout.scene.camera,
-                    },
-                };
-            } else {
-                up = { annotations: [] };
-            }
-            Plotly.relayout(lnxgraph.div, up);
-            setHighlight(lnxgraph, true);
         }
 
         function setMenuButtonActive(graphDiv, menuName, active) {
