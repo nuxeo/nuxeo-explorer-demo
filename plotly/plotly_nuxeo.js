@@ -165,7 +165,6 @@
         };
 
         // initial rendering
-
         function getBasicLayout(nxgraph) {
             var axis = {
                 showbackground: false,
@@ -204,7 +203,13 @@
             };
 
             if (nxgraph.is3D) {
-                Object.assign(scene, { zaxis: axis });
+                Object.assign(scene, {
+                    zaxis: axis,
+                    camera: {
+                        // default camera eye: 1.25, 1.25, 1.25
+                        eye: { x: 0.8, y: 2, z: 0.8 }
+                    }
+                });
                 Object.assign(layout, { scene: scene });
             } else {
                 // axis directly on layout, outside of scene, in 2D
@@ -395,6 +400,7 @@
                 } else {
                     tu['colors'] = trace.x.map(item => trace.marker.color);
                 }
+                tu['visible'] = trace.visible;
                 traceupdates.push(tu);
             }
             //console.log("init tu ", traceupdates);
@@ -407,10 +413,11 @@
             Plotly.restyle(lnxgraph.div, {
                 'marker.color': traceupdates.map((item) => item["colors"]),
                 'selected': traceupdates.map((item) => item["selected"]),
+                'visible': traceupdates.map((item) => item["visible"]),
             }, [...Array(traceupdates.length).keys()]);
         }
 
-        function getSelectionInfo(lnxgraph, id, trace, toggle) {
+        function getSelectionInfo(lnxgraph, id, trace, traceindex, toggle) {
             var indexes = trace.references[id];
             if (!indexes) {
                 return null;
@@ -418,12 +425,15 @@
             var index = indexes[0];
             if (trace.tracetype == TRACE_TYPES.EDGE) {
                 // annotate the middle marker
-                index = indexes[parseInt(indexes.length / 2)];
+                index = indexes[parseInt(indexes.length / 2) + 1];
             }
+            console.log(trace.visible);
             var info = {
                 x: trace.x[index],
                 y: trace.y[index],
                 links: trace.customdata[index].links,
+                visible: trace.visible === true || trace.visible === undefined,
+                traceindex: traceindex,
             }
             if (lnxgraph.is3D) {
                 Object.assign(info, { z: trace.z[index] });
@@ -433,14 +443,11 @@
                 Object.assign(info, {
                     annotationtext: trace.customdata[index].annotation,
                     isEdge: trace.tracetype != TRACE_TYPES.NODE, // XX: flat edges should not be flagged as is maybe
+                    isFlatEdge: trace.isFlatEdge == true,
                 });
-                var color = trace.marker.color;
+                var color = trace.originalcolors;
                 if (Array.isArray(color)) {
-                    color = trace.marker.color[index];
-                }
-                var color = trace.marker.color;
-                if (Array.isArray(color)) {
-                    color = trace.marker.color[index];
+                    color = trace.originalcolors[index];
                 }
                 if (trace.tracetype == TRACE_TYPES.NODE) {
                     var textcolor = color > 1 ? 'black' : 'white';
@@ -449,7 +456,7 @@
                     Object.assign(info, { color: color, textcolor: 'black' });
                 }
             }
-            //console.log("selection info for " + id + ": ", info);
+            console.log("selection info for " + id + ": ", info);
             return info;
         }
 
@@ -461,7 +468,6 @@
             var isFirstTime = lnxgraph.selected.length == 0;
             if (isFirstTime) {
                 setClearSelectionsButtonVisible(lnxgraph.div, true);
-                setHighlightButtonActive(lnxgraph.div, false);
             }
             var gd = graphElement(lnxgraph.div);
             var traces = gd.data;
@@ -478,34 +484,18 @@
                 traceupdates: getInitialTraceUpdates(traces),
             };
 
-            update = selectPointRecursive(lnxgraph, update, point, true, isFirstTime);
-            //console.log("selectPoint update: ", update);
-
-            // perform trace updates
+            update = selectPointRecursive(lnxgraph, update, point, true);
             performTraceUpdates(lnxgraph, update.traceupdates);
             // update annotations
-            var layout_update = {};
-            if (lnxgraph.is3D) {
-                layout_update = {
-                    scene: {
-                        annotations: update.annotations,
-                        // preserve camera eye position
-                        camera: graphElement(lnxgraph.div).layout.scene.camera,
-                    },
-                };
-            } else {
-                layout_update = { annotations: update.annotations };
-            }
-            //console.log("selectPoint lupdate ", layout_update);
+            var layout_update = getAnnotationsLayoutUpdate(lnxgraph, update.annotations);
             Plotly.relayout(lnxgraph.div, layout_update);
         }
 
-        function selectPointRecursive(lnxgraph, update, point, doTarget, isFirstTime) {
+        function selectPointRecursive(lnxgraph, update, point, doTarget) {
             console.log("selectPointRecursive: ", point);
             var markertype = point.customdata.markertype,
                 id = point.customdata.id,
                 toggle = lnxgraph.selected.includes(id);
-
             if (toggle) {
                 lnxgraph.selected.splice(lnxgraph.selected.indexOf(id), 1);
             } else {
@@ -513,20 +503,18 @@
             }
 
             var sinfo = null;
-
             // for each trace, get the element index for this node, and perform selection
             for (var ti = 0; ti < update.traces.length; ti++) {
                 var trace = update.traces[ti];
                 var indexes = trace.references[id];
                 if (indexes) {
                     if (sinfo == null) {
-                        sinfo = getSelectionInfo(lnxgraph, id, trace, toggle);
+                        sinfo = getSelectionInfo(lnxgraph, id, trace, ti, toggle);
                     }
                     // impact trace layout
                     var tup = update.traceupdates[ti];
                     for (var i of indexes) {
                         if (toggle) {
-                            tup.colors[i] = UNSELECTED_COLOR;
                             tup.selected = tup.selected.splice(tup.selected.indexOf(i), 1);
                         } else {
                             if (Array.isArray(trace.originalcolors)) {
@@ -540,49 +528,14 @@
                         //console.log("updates: ", tup);
                     }
                 }
-                // unhighlight all other elements on first selection
-                if (isFirstTime && !toggle) {
-                    var tup = update.traceupdates[ti];
-                    //console.log("tup", tup);
-                    for (var i = 0; i < tup.colors.length; i++) {
-                        if (!tup.selected.includes(i)) {
-                            tup.colors[i] = UNSELECTED_COLOR;
-                        }
-                    }
-                }
             }
 
-            // annotations
             if (sinfo) {
                 console.log("sinfo: ", sinfo);
-                if (toggle) {
-                    update.annotations = removeAnnotation(lnxgraph, update.annotations, sinfo);
-                } else {
-                    var marker = {
-                        x: sinfo.x,
-                        y: sinfo.y,
-                        ax: (sinfo.isEdge ? 0 : -100),
-                        ay: (sinfo.isEdge ? 0 : -150),
-                        text: sinfo.annotationtext,
-                        font: {
-                            size: 20,
-                            color: sinfo.textcolor,
-                        },
-                        bgcolor: sinfo.color,
-                        showarrow: true,
-                        arrowhead: 2,
-                        bordercolor: 'black',
-                        borderwidth: 1,
-                        borderpad: 4,
-                        // arrowsize: 30,
-                        // arrowwidth: 0.1,
-                    }
-                    if (lnxgraph.is3D) {
-                        Object.assign(marker, { z: sinfo.z });
-                    }
-                    update.annotations.push(marker);
-                }
-                if (sinfo.links) {
+                // annotations
+                createAnnotation(lnxgraph, update, sinfo, !toggle);
+                // follow links
+                if (sinfo.links && sinfo.links.length > 0) {
                     var links = sinfo.links;
                     console.log("links ", links);
                     console.log(markertype);
@@ -591,19 +544,19 @@
                         // select all link edges recursively
                         console.log("linking edges ", links);
                         for (var link of links) {
-                            update = selectPointRecursive(lnxgraph, update, createFakePoint(link, false), false, false);
+                            update = selectPointRecursive(lnxgraph, update, createFakePoint(link, false), false);
                         }
                     } else if (markertype == MARKER_TYPES.EDGE) {
                         if (doTarget) {
                             // select all links recursively
                             console.log("linking nodes ", links);
                             for (var link of links) {
-                                update = selectPointRecursive(lnxgraph, update, createFakePoint(link, true), false, false);
+                                update = selectPointRecursive(lnxgraph, update, createFakePoint(link, true), false);
                             }
                         } else {
                             console.log("linking edge ", links[1]);
                             // at least select target node
-                            update = selectPointRecursive(lnxgraph, update, createFakePoint(links[1], true), false, false);
+                            update = selectPointRecursive(lnxgraph, update, createFakePoint(links[1], true), false);
                         }
                     }
                 }
@@ -612,20 +565,77 @@
             return update;
         }
 
-        function removeAnnotation(lnxgraph, annotations, sinfo) {
-            var aindex = null;
-            var is3D = lnxgraph.is3D;
-            for (var i = 0; i < annotations.length; i++) {
-                if (annotations[i].x === sinfo.x && annotations[i].y == sinfo.y && (!is3D || annotations[i].z == sinfo.z)) {
-                    aindex = i;
-                    break;
+        function createAnnotation(lnxgraph, update, sinfo, doCreate) {
+            if (doCreate) {
+                var ax = -100;
+                if (sinfo.isEdge && !sinfo.isFlatEdge) {
+                    ax = -200;
                 }
+                var ay = -150;
+                if (sinfo.isEdge) {
+                    ay = sinfo.isFlatEdge ? 150 : 0;
+                }
+                var marker = {
+                    x: sinfo.x,
+                    y: sinfo.y,
+                    ax: ax,
+                    ay: ay,
+                    text: sinfo.annotationtext,
+                    opacity: 0.7,
+                    font: {
+                        size: 20,
+                        color: sinfo.textcolor,
+                    },
+                    bgcolor: sinfo.color,
+                    showarrow: true,
+                    arrowhead: 2,
+                    bordercolor: 'black',
+                    borderwidth: 1,
+                    borderpad: 4,
+                    // handle events on annotation
+                    captureevents: true,
+                    // make annotation visible only if trace is visible
+                    visible: sinfo.visible == true,
+                    // keep trace index for visibility trigger on trace visibility
+                    traceindex: sinfo.traceindex,
+                }
+                if (lnxgraph.is3D) {
+                    Object.assign(marker, { z: sinfo.z });
+                }
+                update.annotations.push(marker);
+            } else {
+                // remove annotation
+                var aindex = null;
+                var is3D = lnxgraph.is3D;
+                var annotations = update.annotations;
+                for (var i = 0; i < annotations.length; i++) {
+                    if (annotations[i].x === sinfo.x && annotations[i].y == sinfo.y && (!is3D || annotations[i].z == sinfo.z)) {
+                        aindex = i;
+                        break;
+                    }
+                }
+                annotations.splice(aindex, 1);
             }
-            annotations.splice(aindex, 1);
-            return annotations;
         }
 
-        function setHighlight(lnxgraph, doHighlight) {
+        function getAnnotationsLayoutUpdate(lnxgraph, annotations) {
+            var layout_update = {};
+            if (lnxgraph.is3D) {
+                layout_update = {
+                    scene: {
+                        annotations: annotations,
+                        // preserve camera eye position
+                        camera: graphElement(lnxgraph.div).layout.scene.camera,
+                    },
+                };
+            } else {
+                layout_update = { annotations: annotations };
+            }
+            //console.log("annot lupdate ", layout_update);
+            return layout_update;
+        }
+
+        function highlightUnselected(lnxgraph, doHighlight) {
             var traces = graphElement(lnxgraph.div).data;
             var traceupdates = getInitialTraceUpdates(traces);
             for (var ti = 0; ti < traces.length; ti++) {
@@ -654,23 +664,12 @@
             setClearSelectionsButtonVisible(lnxgraph.div, false);
             // reset dupe detection helpers
             lnxgraph.selected = [];
+            // reset colors on nodes
+            highlightUnselected(lnxgraph, true);
             // update selected info on all traces too
             var dup = { selected: [] };
-            var lup = {};
-            if (lnxgraph.is3D) {
-                lup = {
-                    scene: {
-                        annotations: [],
-                        // preserve camera eye position
-                        camera: graphElement(lnxgraph.div).layout.scene.camera,
-                    },
-                };
-            } else {
-                lup = { annotations: [] };
-            }
+            var lup = getAnnotationsLayoutUpdate(lnxgraph, []);
             Plotly.update(lnxgraph.div, dup, lup);
-            // reset colors on nodes
-            setHighlight(lnxgraph, true);
         }
 
         function getUpdateMenus(traces) {
@@ -807,12 +806,13 @@
                 edgesById = {};
             for (var i = 0; i < fig.edges.length; i++) {
                 var edge = fig.edges[i];
-                edge.id = 'NXEdge' + i;
+                edge.id = `NXEdge${i}-${edge.value}`;
                 edgesById[edge.id] = edge;
                 if (!edgesByNodeId[edge.source]) {
                     edgesByNodeId[edge.source] = [];
                 }
                 edgesByNodeId[edge.source].push(edge.id);
+                // FIXME?
                 // if (edge.value == EDGE_TYPES.REFERENCES) {
                 //     if (!edgesByNodeId[edge.target]) {
                 //         edgesByNodeId[edge.target] = [];
@@ -820,7 +820,6 @@
                 //     edgesByNodeId[edge.target].push(edge.id);
                 // }
             }
-            //console.log(edgesByNodeId);
             // wrap these helpers inside a graph object
             var nxgraph = {
                 div: graphDiv,
@@ -837,9 +836,9 @@
             var traces = [
                 // groups of nodes and edges, grouped depending on runtime logics
                 ...getNodeTrace(nxgraph, 'BUNDLE', { legendgroup: 'bundles' }),
-                ...getEdgeTrace(nxgraph, 'REQUIRES', { legendgroup: 'bundles' }),
+                ...getEdgeTrace(nxgraph, 'REQUIRES', { legendgroup: 'bundles', isFlatEdge: true }),
                 ...getNodeTrace(nxgraph, 'COMPONENT', { legendgroup: 'components' }),
-                ...getEdgeTrace(nxgraph, 'SOFT_REQUIRES', { legendgroup: 'components' }),
+                ...getEdgeTrace(nxgraph, 'SOFT_REQUIRES', { legendgroup: 'components', isFlatEdge: true }),
                 ...getNodeTrace(nxgraph, 'EXTENSION_POINT', { legendgroup: 'xps' }),
                 ...getNodeTrace(nxgraph, 'CONTRIBUTION', { legendgroup: 'xps' }),
                 ...getEdgeTrace(nxgraph, 'REFERENCES', { legendgroup: 'xps' }),
@@ -893,9 +892,12 @@
                 // XXX
                 console.log("doubleclick: ", data);
             });
+            gd.on('plotly_legendclick', function (data) {
+                console.log("legendclick: ", data);
+            });
             gd.on('plotly_clickannotation', function (event, data) {
-                //console.log("annot event: ", event);
-                //console.log("annot data: ", data);
+                console.log("annot event: ", event);
+                console.log("annot data: ", data);
                 if (data.points) {
                     var point = data.points[0];
                     if (point.customdata) {
@@ -908,19 +910,18 @@
                 if (data.menu.name == menuName('SELECT_MENU')) {
                     clearSelections(lightNXGraph);
                 } else if (data.menu.name == menuName('HIGHLIGHT_MENU')) {
-                    setHighlight(lightNXGraph, data.active != 0);
+                    highlightUnselected(lightNXGraph, data.active != 0);
                 }
             });
             gd.on('plotly_afterplot', function () {
                 console.log('done plotting');
-                console.log(graphElement(graphDiv).data);
-
+                console.log(document.getElementById(graphDiv).data);
             });
-            // init and hook bundle selection, might trigger an update if selections exist
 
+            // init and hook bundle selection, might trigger an update if selections exist
             // FIXME: disabled for now: makes the page freeze for some reason
-            // var bundles = fig.nodes.filter(function(node) {return node.type == 'BUNDLE'});
-            // initBundleSelect(lightNXGraph, bundles);
+            var bundles = fig.nodes.filter(function (node) { return node.type == 'BUNDLE' });
+            initBundleSelect(lightNXGraph, bundles);
         }
 
         return _plot;
