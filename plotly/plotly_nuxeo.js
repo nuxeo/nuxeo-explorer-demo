@@ -10,11 +10,6 @@
             DEFAULT: 1,
             UNSELECTED: 0.1,
         }
-        const EDGE_WIDTH = {
-            DEFAULT: 3,
-            UNSELECTED: 0.1,
-        }
-
         const MARKER_TYPES = {
             NODE: 'node',
             EDGE: 'edge',
@@ -22,8 +17,6 @@
         const TRACE_TYPES = {
             NODE: 'nodes',
             EDGE: 'edges',
-            // used only in 2d
-            EDGE_LINE: 'edgelines',
         }
 
         const MENUS = {
@@ -130,7 +123,8 @@
         };
         const edgeLabel = (value) => EDGE_TYPES[value]['label'];
         const edgeColor = (value) => EDGE_TYPES[value]['color'];
-        const edgeLineMarkerSymbol = (nxgraph) => (nxgraph.is3D ? 'circle' : 'star');
+        const edgeLineMarkerSymbol = (nxgraph) => (nxgraph.is3D ? 'circle' : 'hexagon');
+        const edgeLineMarkerSize = (nxgraph) => (nxgraph.is3D ? 2 : 5);
 
         const HOVERTEMPLATE = "%{customdata.annotation}<extra></extra>";
         const nodeMarkerAnnotation = (node) => `<b>${node.label}</b><br />(${node.x}, ${node.y}, ${node.z})<br /><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}`;
@@ -297,89 +291,8 @@
             return [trace];
         }
 
+        // use markers instead of lines because of restrictions on lines (color + width + marker opacity)
         function getEdgeTrace(nxgraph, type, config) {
-            return (nxgraph.is3D ? getEdgeTrace3D(nxgraph, type, config) : getEdgeTrace2D(nxgraph, type, config));
-        }
-
-        function getEdgeTrace2D(nxgraph, type, config) {
-            var edges = nxgraph.fig.edges.filter(function (edge) { return type ? edge.value == type : true });
-            var references = edges.reduce(function (map, edge, index) {
-                map[edge.id] = [index];
-                return map;
-            }, {});
-            var colors = type ? edgeColor(type) : edges.map(edge => edgeColor(edge.value));
-            var name = (type ? edgeLabel(type) : "Edges");
-            if (type) {
-                name = `<b><span style="color:${edgeColor(type)}">${name}</span></b>`;
-            }
-            var customdata = edges.map(edge => getEdgeLineMarkerCustomData(nxgraph, edge));
-
-            // marker trace to handle edge selection...
-            // see https://community.plotly.com/t/plotly-hover-event-not-getting-triggered-for-al-data-points/387
-            var nbiterations = 4;
-            var x = computeEdgeLineMarkers(edges, nxgraph.nodesById, 'x', nbiterations); // will server as final size reference
-            var nbpoints = x.length / edges.length;
-            var mreferences = edges.reduce(function (map, edge, index) {
-                map[edge.id] = [...Array(nbpoints).keys()].map(i => i + index);
-                return map;
-            }, {});
-            var allcolors = (type ? colors : computeLineMarkersData(colors, nbpoints));
-            var name = (type ? edgeLabel(type) : "Edges");
-            if (type) {
-                name = `<b><span style="color:${edgeColor(type)}">${name}</span></b>`;
-            }
-            var markers = {
-                name: name + ' (Edge Line Markers)',
-                //showlegend: false,
-                type: 'scattergl',
-                mode: 'markers',
-                x: x,
-                y: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'y', nbiterations),
-                hovertemplate: HOVERTEMPLATE,
-                hoverlabel: { font: { size: 20 } },
-                customdata: computeLineMarkersData(customdata, nbpoints),
-                marker: {
-                    symbol: edgeLineMarkerSymbol(nxgraph),
-                    color: allcolors,
-                    opacity: MARKER_OPACITY.DEFAULT, // to be changed on selection/highlight
-                    size: 10,
-                    line: {
-                        color: 'rgb(50,50,50)',
-                        width: 0.3,
-                    },
-                },
-                // additional custom trace info
-                tracetype: TRACE_TYPES.EDGE,
-                references: mreferences,
-                selectedindexes: [],
-                originalcolors: allcolors, // keep original colors to handle selections and annotations
-            };
-            Object.assign(markers, config);
-
-            // line trace
-            var lines = {
-                name: name,
-                type: 'scattergl',
-                mode: 'lines',
-                x: computeEdgeLines(edges, nxgraph.nodesById, 'x'),
-                y: computeEdgeLines(edges, nxgraph.nodesById, 'y'),
-                line: {
-                    color: colors,
-                    width: EDGE_WIDTH.DEFAULT, // to be changed on selection/highlight
-                },
-                // additional custom trace info
-                tracetype: TRACE_TYPES.EDGE_LINE,
-                references: references,
-                selectedindexes: [],
-                originalcolors: colors, // keep original colors to handle annotations
-            };
-            Object.assign(lines, config);
-            // return [markers, lines];
-            return [markers];
-        }
-
-        // use markers instead of lines because of 3D restrictions on lines (color + width + marker opacity)
-        function getEdgeTrace3D(nxgraph, type, config) {
             var edges = nxgraph.fig.edges.filter(function (edge) { return type ? edge.value == type : true });
             var nbiterations = 4;
             var x = computeEdgeLineMarkers(edges, nxgraph.nodesById, 'x', nbiterations); // will server as final size reference
@@ -397,18 +310,17 @@
             }
             var markers = {
                 name: name,
-                type: 'scatter3d',
+                type: 'scattergl',
                 mode: 'markers',
                 x: x,
                 y: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'y', nbiterations),
-                z: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'z', nbiterations),
                 hovertemplate: HOVERTEMPLATE,
                 hoverlabel: { font: { size: 20 } },
                 customdata: computeLineMarkersData(customdata, nbpoints),
                 marker: {
                     symbol: edgeLineMarkerSymbol(nxgraph),
                     color: allcolors, // to be changed on selection/highlight
-                    size: 2,
+                    size: edgeLineMarkerSize(nxgraph),
                     line: {
                         color: 'rgb(50,50,50)',
                         width: 0.3,
@@ -420,6 +332,14 @@
                 selectedindexes: [],
                 originalcolors: allcolors, // keep original colors to handle selections and annotations
             };
+            if (nxgraph.is3D) {
+                Object.assign(markers, {
+                    type: 'scatter3d',
+                    z: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'z', nbiterations),
+
+
+                });
+            }
             Object.assign(markers, config);
             return [markers];
         }
@@ -638,11 +558,11 @@
         function updateAnnotation(lnxgraph, update, sinfo, doCreate) {
             if (doCreate) {
                 var ax = -100;
-                if (sinfo.isEdge && !sinfo.isFlatEdge) {
+                if (lnxgraph.is3D && sinfo.isEdge && !sinfo.isFlatEdge) {
                     ax = -200;
                 }
                 var ay = -150;
-                if (sinfo.isEdge) {
+                if (lnxgraph.is3D && sinfo.isEdge) {
                     ay = sinfo.isFlatEdge ? 150 : 0;
                 }
                 var annotation = {
@@ -690,67 +610,28 @@
 
         function highlightUnselected(lnxgraph, doHighlight) {
             var traces = graphElement(lnxgraph.div).data;
-            if (lnxgraph.is3D) {
-                // use color for selection in 3D, see https://github.com/plotly/plotly.js/issues/2186
-                var colors = traces.reduce(function (res, trace) {
-                    if (trace.selectedindexes.length == 0) {
-                        // reset to original color(s) or unselected color
-                        res.push(doHighlight ? trace.originalcolors : UNSELECTED_COLOR);
-                    } else if (doHighlight) {
-                        // reset to original color(s)
-                        res.push(trace.originalcolors);
+            // use color for selection, see https://github.com/plotly/plotly.js/issues/2186
+            var colors = traces.reduce(function (res, trace) {
+                if (trace.selectedindexes.length == 0) {
+                    // reset to original color(s) or unselected color
+                    res.push(doHighlight ? trace.originalcolors : UNSELECTED_COLOR);
+                } else if (doHighlight) {
+                    // reset to original color(s)
+                    res.push(trace.originalcolors);
+                } else {
+                    // take into account selections
+                    var tcolors;
+                    if (Array.isArray(trace.originalcolors)) {
+                        tcolors = [...trace.originalcolors];
                     } else {
-                        // take into account selections
-                        var tcolors;
-                        if (Array.isArray(trace.originalcolors)) {
-                            tcolors = [...trace.originalcolors];
-                        } else {
-                            tcolors = [...Array(trace.x.length).fill(trace.originalcolors)];
-                        }
-                        tcolors = tcolors.map((color, index) => trace.selectedindexes.includes(index) ? color : UNSELECTED_COLOR);
-                        res.push(tcolors);
+                        tcolors = [...Array(trace.x.length).fill(trace.originalcolors)];
                     }
-                    return res;
-                }, []);
-                Plotly.restyle(lnxgraph.div, { 'marker.color': colors }, [...Array(traces.length).keys()]);
-            } else {
-                // use opacity for markers, and edge width for lines
-                var opacities = [], markerIndices = [];
-                var widths = [], lineIndices = [];
-                traces.forEach((trace, ti) => {
-                    if (trace.tracetype == TRACE_TYPES.EDGE_LINE) {
-                        lineIndices.push(ti);
-                        var twidths;
-                        if (trace.selectedindexes.length == 0) {
-                            twidths = doHighlight ? EDGE_WIDTH.DEFAULT : EDGE_WIDTH.UNSELECTED;
-                        } else if (doHighlight) {
-                            twidths = EDGE_WIDTH.DEFAULT;
-                        } else {
-                            twidths = [...Array(trace.x.length).fill(EDGE_WIDTH.DEFAULT)];
-                            twidths = twidths.map((width, index) => trace.selectedindexes.includes(index) ? width : EDGE_WIDTH.UNSELECTED);
-                        }
-                        widths.push(twidths);
-                    } else {
-                        markerIndices.push(ti);
-                        var tops;
-                        if (trace.selectedindexes.length == 0) {
-                            tops = doHighlight ? MARKER_OPACITY.DEFAULT : MARKER_OPACITY.UNSELECTED;
-                        } else if (doHighlight) {
-                            tops = MARKER_OPACITY.DEFAULT;
-                        } else {
-                            tops = [...Array(trace.x.length).fill(MARKER_OPACITY.DEFAULT)];
-                            tops = tops.map((width, index) => trace.selectedindexes.includes(index) ? width : MARKER_OPACITY.UNSELECTED);
-                        }
-                        opacities.push(tops);
-                    }
-                });
-                console.log("opacities", opacities);
-                console.log("markerIndices", markerIndices);
-                console.log("widths", widths);
-                console.log("lineIndices", lineIndices);
-                Plotly.restyle(lnxgraph.div, { 'marker.opacity': opacities }, markerIndices);
-                Plotly.restyle(lnxgraph.div, { 'line.width': widths }, lineIndices);
-            }
+                    tcolors = tcolors.map((color, index) => trace.selectedindexes.includes(index) ? color : UNSELECTED_COLOR);
+                    res.push(tcolors);
+                }
+                return res;
+            }, []);
+            Plotly.restyle(lnxgraph.div, { 'marker.color': colors }, [...Array(traces.length).keys()]);
             setHighlightButtonActive(lnxgraph.div, doHighlight);
         }
 
@@ -848,7 +729,6 @@
         function getMenuIndex(graphDiv, menuName) {
             var menus = graphElement(graphDiv).layout.updatemenus;
             for (var i = 0; i < menus.length; i++) {
-                console.log(menus[i].name);
                 if (menus[i].name == menuName) {
                     return i;
                 };
