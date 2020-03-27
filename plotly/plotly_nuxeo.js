@@ -561,11 +561,11 @@
 
         function updateAnnotation(lnxgraph, update, sinfo, doCreate) {
             if (doCreate) {
-                var ax = -100;
+                var ax = lnxgraph.is3D? -100 : -50;
                 if (lnxgraph.is3D && sinfo.isEdge && !sinfo.isFlatEdge) {
                     ax = -200;
                 }
-                var ay = -150;
+                var ay = lnxgraph.is3D? -150 : -100;
                 if (lnxgraph.is3D && sinfo.isEdge) {
                     ay = sinfo.isFlatEdge ? 150 : 0;
                 }
