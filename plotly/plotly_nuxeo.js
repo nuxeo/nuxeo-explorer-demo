@@ -1033,6 +1033,16 @@
             });
         }
 
+        // TODO notes after feedback from Nelson:
+        // 1. add package.json (with plotly.js-dist as dep)
+        // 2. add npm start script to serve the thing (and open plotly.html)
+        // 3. split things into modules
+        // (cannot load plotly as ESM, see known bug in d3 preventing it from working https://github.com/plotly/plotly.js/issues/3518)
+        // 4. higher order functions: see _render a function that return another function
+        // 5. const { value, options, selectedIndex } = sel; destructuring assingments
+        // 6. spread operator in maps: { …options } (? not sure still valid in WIP branch)
+        // 7. flatMap: you can use map and have it produce an array but still end up with a flat array (not an array of arrays)
+
         return _plot;
 
     }
