@@ -113,30 +113,28 @@
         const EDGE_TYPES = {
             REQUIRES: {
                 label: 'Requires Bundle',
-                color: '#ffa000',
+                color: '#FFA500', // Orange
             },
             SOFT_REQUIRES: {
                 label: 'Requires Component',
-                color: '#fafa00',
+                color: '#FFD700', // Gold
             },
             REFERENCES: {
                 label: 'Contributes to Extension Point',
-                color: '#00c800',
+                color: '#8FBC8F', // DarkSeaGreen
             },
             CONTAINS: {
                 label: 'Contains',
-                color: '#6496ff',
+                color: '#87CEFA', // LightSkyBlue
             }
         };
         const edgeLabel = (value) => EDGE_TYPES[value]['label'];
         const edgeColor = (value) => EDGE_TYPES[value]['color'];
-        const edgeLineMarkerSymbol = (nxgraph) => (nxgraph.is3D ? 'circle' : 'triangle-right');
+        const edgeLineMarkerSymbol = (nxgraph) => (nxgraph.is3D ? 'circle' : 'star');
 
+        const HOVERTEMPLATE = "%{customdata.annotation}<extra></extra>";
         const nodeMarkerAnnotation = (node) => `<b>${node.label}</b><br />(${node.x}, ${node.y}, ${node.z})<br /><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}`;
-        const NODE_HOVERTEMPLATE = "%{customdata.annotation}<extra></extra>";
-
         const edgeLineMarkerAnnotation = (edge, source, target) => `${source.label}<br /><b>${edge.value}</b><br />${target.label}<br />(${source.x}, ${source.y}, ${source.z}) -> (${target.x}, ${target.y}, ${target.z})`;
-        const EDGE_LINE_HOVERTEMPLATE = "%{customdata.annotation}<extra></extra>";
 
         _plot.render = function (graphDiv, options) {
             var datasource = options.datasource;
@@ -263,24 +261,20 @@
             }, {});
             var colors = nodes.map(node => nodeColor(node.category));
             var trace = {
-                name: (type ? nodeLabel(type) : "Nodes"),
+                name: `<b>${type ? nodeLabel(type) : "Nodes"}</b>`,
                 type: 'scatter',
                 mode: 'markers',
                 x: nodes.map(node => node.x),
                 y: nodes.map(node => node.y),
-                hovertemplate: NODE_HOVERTEMPLATE,
-                hoverlabel: {
-                    font: {
-                        size: 20,
-                    }
-                },
+                hovertemplate: HOVERTEMPLATE,
+                hoverlabel: { font: { size: 20 } },
                 customdata: nodes.map(node => getNodeMarkerCustomData(nxgraph, node)),
                 marker: {
                     symbol: (type ? nodeSymbol(type) : nodes.map(node => nodeSymbol(node.type))),
                     size: nodes.map(node => nodeWeight(node.weight)),
                     // XXX: color is not shared with hover background in 3D...
-                    color: colors, // to be changed on selection/highlight
-                    //opacity: MARKER_OPACITY.DEFAULT,
+                    color: colors, // to be changed on selection/highlight in 3D
+                    opacity: MARKER_OPACITY.DEFAULT, // to be changed on selection/highlight in 2D
                     line: {
                         color: 'rgb(50,50,50)',
                         width: 0.5
@@ -289,13 +283,14 @@
                 // additional custom trace info
                 tracetype: TRACE_TYPES.NODE,
                 references: references,
-                selected: [],
-                originalcolors: colors, // keep original colors to handle unhighlight on selection
+                selectedindexes: [],
+                originalcolors: colors, // keep original colors to handle selections and annotations
             };
             if (nxgraph.is3D) {
                 Object.assign(trace, {
                     'type': 'scatter3d',
                     'z': nodes.map(node => node.z),
+
                 });
             }
             Object.assign(trace, config);
@@ -303,35 +298,51 @@
         }
 
         function getEdgeTrace(nxgraph, type, config) {
+            return (nxgraph.is3D ? getEdgeTrace3D(nxgraph, type, config) : getEdgeTrace2D(nxgraph, type, config));
+        }
+
+        function getEdgeTrace2D(nxgraph, type, config) {
             var edges = nxgraph.fig.edges.filter(function (edge) { return type ? edge.value == type : true });
-            // use markers instead of lines because of 3D restrictions on lines (color + width + marker opacity)
-            var x = computeEdgeLineMarkers(edges, nxgraph.nodesById, 'x'); // will server as final size reference
+            var references = edges.reduce(function (map, edge, index) {
+                map[edge.id] = [index];
+                return map;
+            }, {});
+            var colors = type ? edgeColor(type) : edges.map(edge => edgeColor(edge.value));
+            var name = (type ? edgeLabel(type) : "Edges");
+            if (type) {
+                name = `<b><span style="color:${edgeColor(type)}">${name}</span></b>`;
+            }
+            var customdata = edges.map(edge => getEdgeLineMarkerCustomData(nxgraph, edge));
+
+            // marker trace to handle edge selection...
+            // see https://community.plotly.com/t/plotly-hover-event-not-getting-triggered-for-al-data-points/387
+            var nbiterations = 4;
+            var x = computeEdgeLineMarkers(edges, nxgraph.nodesById, 'x', nbiterations); // will server as final size reference
             var nbpoints = x.length / edges.length;
             var mreferences = edges.reduce(function (map, edge, index) {
                 map[edge.id] = [...Array(nbpoints).keys()].map(i => i + index);
                 return map;
             }, {});
-            var customdata = edges.map(edge => getEdgeLineMarkerCustomData(nxgraph, edge));
-            var colors = type ? edgeColor(type) : edges.map(edge => edgeColor(edge.value));
             var allcolors = (type ? colors : computeLineMarkersData(colors, nbpoints));
+            var name = (type ? edgeLabel(type) : "Edges");
+            if (type) {
+                name = `<b><span style="color:${edgeColor(type)}">${name}</span></b>`;
+            }
             var markers = {
-                name: (type ? edgeLabel(type) : "Edges"),
+                name: name + ' (Edge Line Markers)',
+                //showlegend: false,
                 type: 'scattergl',
                 mode: 'markers',
                 x: x,
-                y: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'y'),
-                hovertemplate: EDGE_LINE_HOVERTEMPLATE,
-                hoverlabel: {
-                    font: {
-                        size: 20,
-                    },
-                },
+                y: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'y', nbiterations),
+                hovertemplate: HOVERTEMPLATE,
+                hoverlabel: { font: { size: 20 } },
                 customdata: computeLineMarkersData(customdata, nbpoints),
                 marker: {
                     symbol: edgeLineMarkerSymbol(nxgraph),
-                    color: allcolors, // to be changed on selection/highlight
-                    size: (nxgraph.is3D ? 2 : 10),
-                    //opacity: MARKER_OPACITY.DEFAULT,
+                    color: allcolors,
+                    opacity: MARKER_OPACITY.DEFAULT, // to be changed on selection/highlight
+                    size: 10,
                     line: {
                         color: 'rgb(50,50,50)',
                         width: 0.3,
@@ -340,34 +351,100 @@
                 // additional custom trace info
                 tracetype: TRACE_TYPES.EDGE,
                 references: mreferences,
-                originalcolors: allcolors, // keep original colors to handle unhighlight on selection
-                selected: [],
+                selectedindexes: [],
+                originalcolors: allcolors, // keep original colors to handle selections and annotations
             };
-            if (nxgraph.is3D) {
-                Object.assign(markers, {
-                    type: 'scatter3d',
-                    z: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'z'),
-                });
+            Object.assign(markers, config);
+
+            // line trace
+            var lines = {
+                name: name,
+                type: 'scattergl',
+                mode: 'lines',
+                x: computeEdgeLines(edges, nxgraph.nodesById, 'x'),
+                y: computeEdgeLines(edges, nxgraph.nodesById, 'y'),
+                line: {
+                    color: colors,
+                    width: EDGE_WIDTH.DEFAULT, // to be changed on selection/highlight
+                },
+                // additional custom trace info
+                tracetype: TRACE_TYPES.EDGE_LINE,
+                references: references,
+                selectedindexes: [],
+                originalcolors: colors, // keep original colors to handle annotations
+            };
+            Object.assign(lines, config);
+            // return [markers, lines];
+            return [markers];
+        }
+
+        // use markers instead of lines because of 3D restrictions on lines (color + width + marker opacity)
+        function getEdgeTrace3D(nxgraph, type, config) {
+            var edges = nxgraph.fig.edges.filter(function (edge) { return type ? edge.value == type : true });
+            var nbiterations = 4;
+            var x = computeEdgeLineMarkers(edges, nxgraph.nodesById, 'x', nbiterations); // will server as final size reference
+            var nbpoints = x.length / edges.length;
+            var mreferences = edges.reduce(function (map, edge, index) {
+                map[edge.id] = [...Array(nbpoints).keys()].map(i => i + index);
+                return map;
+            }, {});
+            var customdata = edges.map(edge => getEdgeLineMarkerCustomData(nxgraph, edge));
+            var colors = type ? edgeColor(type) : edges.map(edge => edgeColor(edge.value));
+            var allcolors = (type ? colors : computeLineMarkersData(colors, nbpoints));
+            var name = (type ? edgeLabel(type) : "Edges");
+            if (type) {
+                name = `<b><span style="color:${edgeColor(type)}">${name}</span></b>`;
             }
+            var markers = {
+                name: name,
+                type: 'scatter3d',
+                mode: 'markers',
+                x: x,
+                y: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'y', nbiterations),
+                z: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'z', nbiterations),
+                hovertemplate: HOVERTEMPLATE,
+                hoverlabel: { font: { size: 20 } },
+                customdata: computeLineMarkersData(customdata, nbpoints),
+                marker: {
+                    symbol: edgeLineMarkerSymbol(nxgraph),
+                    color: allcolors, // to be changed on selection/highlight
+                    size: 2,
+                    line: {
+                        color: 'rgb(50,50,50)',
+                        width: 0.3,
+                    },
+                },
+                // additional custom trace info
+                tracetype: TRACE_TYPES.EDGE,
+                references: mreferences,
+                selectedindexes: [],
+                originalcolors: allcolors, // keep original colors to handle selections and annotations
+            };
             Object.assign(markers, config);
             return [markers];
         }
 
         function computeEdgeLines(edges, nodesById, axis) {
-            return edges.reduce(function (r, edge) { r.push(nodesById[edge.source][axis], nodesById[edge.target][axis], null); return r; }, []);
+            return edges.reduce(function (res, edge) {
+                res.push(nodesById[edge.source][axis], nodesById[edge.target][axis], null);
+                return res;
+            }, []);
         }
 
         // helps building an additional trace to show marker points on relations for better text on hover
-        function computeEdgeLineMarkers(edges, nodesById, axis) {
+        function computeEdgeLineMarkers(edges, nodesById, axis, nbiterations) {
             return edges.reduce(function (res, edge) {
-                res.push(...midpoints(nodesById[edge.source][axis], nodesById[edge.target][axis], 0, 4));
+                res.push(...midpoints(nodesById[edge.source][axis], nodesById[edge.target][axis], 0, nbiterations));
                 return res;
             }, []);
         }
 
         // adapt other data content to line markers multiplication thanks to above logics
         function computeLineMarkersData(data, nbpoints) {
-            return data.reduce(function (r, item) { r.push(...Array(nbpoints).fill(item)); return r; }, []);
+            return data.reduce(function (res, item) {
+                res.push(...Array(nbpoints).fill(item));
+                return res;
+            }, []);
         }
 
         function midpoints(a, b, iteration, nbmax) {
@@ -388,35 +465,6 @@
 
         // selection management
 
-        function getInitialTraceUpdates(traces) {
-            var traceupdates = [];
-            for (var ti = 0; ti < traces.length; ti++) {
-                // init with info that will be impacted by selection
-                var trace = traces[ti];
-                var tu = {};
-                tu['selected'] = [...trace.selected];
-                if (Array.isArray(trace.marker.color)) {
-                    tu['colors'] = [...trace.marker.color];
-                } else {
-                    tu['colors'] = trace.x.map(item => trace.marker.color);
-                }
-                tu['visible'] = trace.visible;
-                traceupdates.push(tu);
-            }
-            //console.log("init tu ", traceupdates);
-            return traceupdates;
-        }
-
-        function performTraceUpdates(lnxgraph, traceupdates) {
-            console.log(graphElement(lnxgraph.div).data);
-            console.log(traceupdates);
-            Plotly.restyle(lnxgraph.div, {
-                'marker.color': traceupdates.map((item) => item["colors"]),
-                'selected': traceupdates.map((item) => item["selected"]),
-                'visible': traceupdates.map((item) => item["visible"]),
-            }, [...Array(traceupdates.length).keys()]);
-        }
-
         function getSelectionInfo(lnxgraph, id, trace, traceindex, toggle) {
             var indexes = trace.references[id];
             if (!indexes) {
@@ -427,13 +475,12 @@
                 // annotate the middle marker
                 index = indexes[parseInt(indexes.length / 2) + 1];
             }
-            console.log(trace.visible);
             var info = {
                 x: trace.x[index],
                 y: trace.y[index],
                 links: trace.customdata[index].links,
                 visible: trace.visible === true || trace.visible === undefined,
-                traceindex: traceindex,
+                traceindexes: [traceindex],
             }
             if (lnxgraph.is3D) {
                 Object.assign(info, { z: trace.z[index] });
@@ -452,11 +499,11 @@
                 if (trace.tracetype == TRACE_TYPES.NODE) {
                     var textcolor = color > 1 ? 'black' : 'white';
                     Object.assign(info, { color: color, textcolor: textcolor });
-                } else if (trace.tracetype == TRACE_TYPES.EDGE) {
+                } else {
                     Object.assign(info, { color: color, textcolor: 'black' });
                 }
             }
-            console.log("selection info for " + id + ": ", info);
+            //console.log("selection info for " + id + ": ", info);
             return info;
         }
 
@@ -465,36 +512,34 @@
         // - update width on edges (on 2D)
         // - show corresponding annotations on the fly
         function selectPoint(lnxgraph, point) {
-            var isFirstTime = lnxgraph.selected.length == 0;
-            if (isFirstTime) {
+            var isFirstSelection = lnxgraph.selected.length == 0;
+            if (isFirstSelection) {
                 setClearSelectionsButtonVisible(lnxgraph.div, true);
             }
-            var gd = graphElement(lnxgraph.div);
-            var traces = gd.data;
-            var annotations = [];
-            // init but dereference annotations as the array will be changed by update
-            if (lnxgraph.is3D && gd.layout.scene.annotations) {
-                annotations = [...gd.layout.scene.annotations];
-            } else if (gd.layout.annotations) {
-                annotations = [...gd.layout.annotations];
-            }
+            var traces = graphElement(lnxgraph.div).data;
+            var traceupdates = traces.reduce(function (res, trace) {
+                res.push([...trace.selectedindexes]);
+                return res;
+            }, []);
             var update = {
                 traces: traces,
-                annotations: annotations,
-                traceupdates: getInitialTraceUpdates(traces),
+                annotations: getInitialAnnotations(lnxgraph),
+                traceupdates: traceupdates,
             };
-
-            update = selectPointRecursive(lnxgraph, update, point, true);
-            performTraceUpdates(lnxgraph, update.traceupdates);
-            // update annotations
-            var layout_update = getAnnotationsLayoutUpdate(lnxgraph, update.annotations);
-            Plotly.relayout(lnxgraph.div, layout_update);
+            selectPointRecursive(lnxgraph, update, point, true);
+            var dataUpdate = { selectedindexes: update.traceupdates };
+            var layoutUpdate = getAnnotationsLayoutUpdate(lnxgraph, update.annotations);
+            var traceIndices = [...Array(traceupdates.length).keys()];
+            Plotly.update(lnxgraph.div, dataUpdate, layoutUpdate, traceIndices);
+            // maybe highlight new selections
+            if (!isHighlightButtonActive(lnxgraph.div)) {
+                highlightUnselected(lnxgraph, false);
+            }
         }
 
         function selectPointRecursive(lnxgraph, update, point, doTarget) {
-            console.log("selectPointRecursive: ", point);
-            var markertype = point.customdata.markertype,
-                id = point.customdata.id,
+            //console.log("selectPointRecursive: ", point);
+            var id = point.customdata.id,
                 toggle = lnxgraph.selected.includes(id);
             if (toggle) {
                 lnxgraph.selected.splice(lnxgraph.selected.indexOf(id), 1);
@@ -510,62 +555,87 @@
                 if (indexes) {
                     if (sinfo == null) {
                         sinfo = getSelectionInfo(lnxgraph, id, trace, ti, toggle);
+                    } else {
+                        sinfo.traceindexes.push(ti);
                     }
-                    // impact trace layout
                     var tup = update.traceupdates[ti];
                     for (var i of indexes) {
                         if (toggle) {
-                            tup.selected = tup.selected.splice(tup.selected.indexOf(i), 1);
+                            tup = tup.splice(tup.indexOf(i), 1);
                         } else {
-                            if (Array.isArray(trace.originalcolors)) {
-                                tup.colors[i] = trace.originalcolors[i];
-                            } else {
-                                tup.colors[i] = trace.originalcolors;
-                            }
-                            tup.selected.push(i);
+                            tup.push(i);
                         }
-                        //console.log("trace name: ", trace.name);
-                        //console.log("updates: ", tup);
                     }
                 }
             }
 
-            if (sinfo) {
-                console.log("sinfo: ", sinfo);
-                // annotations
-                createAnnotation(lnxgraph, update, sinfo, !toggle);
-                // follow links
-                if (sinfo.links && sinfo.links.length > 0) {
-                    var links = sinfo.links;
-                    console.log("links ", links);
-                    console.log(markertype);
-                    console.log(doTarget);
-                    if (markertype == MARKER_TYPES.NODE && doTarget) {
-                        // select all link edges recursively
-                        console.log("linking edges ", links);
+            if (sinfo == null) {
+                // no reference to selected point, should not happen
+                return;
+            }
+
+            console.log("sinfo: ", sinfo);
+            // annotations
+            updateAnnotation(lnxgraph, update, sinfo, !toggle);
+            // follow links
+            if (sinfo.links && sinfo.links.length > 0) {
+                var links = sinfo.links;
+                console.log("links ", links);
+                var markertype = point.customdata.markertype;
+                console.log("markertype", markertype);
+                console.log("doTarget", doTarget);
+                if (markertype == MARKER_TYPES.NODE && doTarget) {
+                    // select all link edges recursively
+                    console.log("linking edges ", links);
+                    for (var link of links) {
+                        selectPointRecursive(lnxgraph, update, createFakePoint(link, false), false);
+                    }
+                } else if (markertype == MARKER_TYPES.EDGE) {
+                    if (doTarget) {
+                        // select all links recursively
+                        console.log("linking nodes ", links);
                         for (var link of links) {
-                            update = selectPointRecursive(lnxgraph, update, createFakePoint(link, false), false);
+                            selectPointRecursive(lnxgraph, update, createFakePoint(link, true), false);
                         }
-                    } else if (markertype == MARKER_TYPES.EDGE) {
-                        if (doTarget) {
-                            // select all links recursively
-                            console.log("linking nodes ", links);
-                            for (var link of links) {
-                                update = selectPointRecursive(lnxgraph, update, createFakePoint(link, true), false);
-                            }
-                        } else {
-                            console.log("linking edge ", links[1]);
-                            // at least select target node
-                            update = selectPointRecursive(lnxgraph, update, createFakePoint(links[1], true), false);
-                        }
+                    } else {
+                        console.log("linking edge ", links[1]);
+                        // at least select target node
+                        selectPointRecursive(lnxgraph, update, createFakePoint(links[1], true), false);
                     }
                 }
             }
-
-            return update;
         }
 
-        function createAnnotation(lnxgraph, update, sinfo, doCreate) {
+        function getInitialAnnotations(lnxgraph) {
+            var gd = graphElement(lnxgraph.div);
+            var annotations = [];
+            // init but dereference annotations as the array will be changed by update
+            if (lnxgraph.is3D && gd.layout.scene.annotations) {
+                annotations = [...gd.layout.scene.annotations];
+            } else if (gd.layout.annotations) {
+                annotations = [...gd.layout.annotations];
+            }
+            return annotations;
+        }
+
+        function getAnnotationsLayoutUpdate(lnxgraph, annotations) {
+            var layout_update = {};
+            if (lnxgraph.is3D) {
+                layout_update = {
+                    scene: {
+                        annotations: annotations,
+                        // preserve camera eye position
+                        camera: graphElement(lnxgraph.div).layout.scene.camera,
+                    },
+                };
+            } else {
+                layout_update = { annotations: annotations };
+            }
+            //console.log("annot lupdate ", layout_update);
+            return layout_update;
+        }
+
+        function updateAnnotation(lnxgraph, update, sinfo, doCreate) {
             if (doCreate) {
                 var ax = -100;
                 if (sinfo.isEdge && !sinfo.isFlatEdge) {
@@ -575,7 +645,7 @@
                 if (sinfo.isEdge) {
                     ay = sinfo.isFlatEdge ? 150 : 0;
                 }
-                var marker = {
+                var annotation = {
                     x: sinfo.x,
                     y: sinfo.y,
                     ax: ax,
@@ -596,13 +666,13 @@
                     captureevents: true,
                     // make annotation visible only if trace is visible
                     visible: sinfo.visible == true,
-                    // keep trace index for visibility trigger on trace visibility
-                    traceindex: sinfo.traceindex,
+                    // keep trace index for annotation visibility trigger on trace visibility
+                    traceindexes: sinfo.traceindexes,
                 }
                 if (lnxgraph.is3D) {
-                    Object.assign(marker, { z: sinfo.z });
+                    Object.assign(annotation, { z: sinfo.z });
                 }
-                update.annotations.push(marker);
+                update.annotations.push(annotation);
             } else {
                 // remove annotation
                 var aindex = null;
@@ -618,45 +688,69 @@
             }
         }
 
-        function getAnnotationsLayoutUpdate(lnxgraph, annotations) {
-            var layout_update = {};
-            if (lnxgraph.is3D) {
-                layout_update = {
-                    scene: {
-                        annotations: annotations,
-                        // preserve camera eye position
-                        camera: graphElement(lnxgraph.div).layout.scene.camera,
-                    },
-                };
-            } else {
-                layout_update = { annotations: annotations };
-            }
-            //console.log("annot lupdate ", layout_update);
-            return layout_update;
-        }
-
         function highlightUnselected(lnxgraph, doHighlight) {
             var traces = graphElement(lnxgraph.div).data;
-            var traceupdates = getInitialTraceUpdates(traces);
-            for (var ti = 0; ti < traces.length; ti++) {
-                var trace = traces[ti];
-                var tupc = traceupdates[ti].colors;
-                if (doHighlight) {
-                    // set back original color
-                    var isArray = Array.isArray(trace.originalcolors);
-                    for (var i = 0; i < tupc.length; i++) {
-                        tupc[i] = isArray ? trace.originalcolors[i] : trace.originalcolors;
-                    }
-                } else {
-                    // avoid resetting selected markers
-                    for (var i = 0; i < tupc.length; i++) {
-                        if (!trace.selected.includes(i)) {
-                            tupc[i] = UNSELECTED_COLOR;
+            if (lnxgraph.is3D) {
+                // use color for selection in 3D, see https://github.com/plotly/plotly.js/issues/2186
+                var colors = traces.reduce(function (res, trace) {
+                    if (trace.selectedindexes.length == 0) {
+                        // reset to original color(s) or unselected color
+                        res.push(doHighlight ? trace.originalcolors : UNSELECTED_COLOR);
+                    } else if (doHighlight) {
+                        // reset to original color(s)
+                        res.push(trace.originalcolors);
+                    } else {
+                        // take into account selections
+                        var tcolors;
+                        if (Array.isArray(trace.originalcolors)) {
+                            tcolors = [...trace.originalcolors];
+                        } else {
+                            tcolors = [...Array(trace.x.length).fill(trace.originalcolors)];
                         }
+                        tcolors = tcolors.map((color, index) => trace.selectedindexes.includes(index) ? color : UNSELECTED_COLOR);
+                        res.push(tcolors);
                     }
-                }
+                    return res;
+                }, []);
+                Plotly.restyle(lnxgraph.div, { 'marker.color': colors }, [...Array(traces.length).keys()]);
+            } else {
+                // use opacity for markers, and edge width for lines
+                var opacities = [], markerIndices = [];
+                var widths = [], lineIndices = [];
+                traces.forEach((trace, ti) => {
+                    if (trace.tracetype == TRACE_TYPES.EDGE_LINE) {
+                        lineIndices.push(ti);
+                        var twidths;
+                        if (trace.selectedindexes.length == 0) {
+                            twidths = doHighlight ? EDGE_WIDTH.DEFAULT : EDGE_WIDTH.UNSELECTED;
+                        } else if (doHighlight) {
+                            twidths = EDGE_WIDTH.DEFAULT;
+                        } else {
+                            twidths = [...Array(trace.x.length).fill(EDGE_WIDTH.DEFAULT)];
+                            twidths = twidths.map((width, index) => trace.selectedindexes.includes(index) ? width : EDGE_WIDTH.UNSELECTED);
+                        }
+                        widths.push(twidths);
+                    } else {
+                        markerIndices.push(ti);
+                        var tops;
+                        if (trace.selectedindexes.length == 0) {
+                            tops = doHighlight ? MARKER_OPACITY.DEFAULT : MARKER_OPACITY.UNSELECTED;
+                        } else if (doHighlight) {
+                            tops = MARKER_OPACITY.DEFAULT;
+                        } else {
+                            tops = [...Array(trace.x.length).fill(MARKER_OPACITY.DEFAULT)];
+                            tops = tops.map((width, index) => trace.selectedindexes.includes(index) ? width : MARKER_OPACITY.UNSELECTED);
+                        }
+                        opacities.push(tops);
+                    }
+                });
+                console.log("opacities", opacities);
+                console.log("markerIndices", markerIndices);
+                console.log("widths", widths);
+                console.log("lineIndices", lineIndices);
+                Plotly.restyle(lnxgraph.div, { 'marker.opacity': opacities }, markerIndices);
+                Plotly.restyle(lnxgraph.div, { 'line.width': widths }, lineIndices);
             }
-            performTraceUpdates(lnxgraph, traceupdates);
             setHighlightButtonActive(lnxgraph.div, doHighlight);
         }
 
@@ -664,12 +758,28 @@
             setClearSelectionsButtonVisible(lnxgraph.div, false);
             // reset dupe detection helpers
             lnxgraph.selected = [];
-            // reset colors on nodes
+            // reset highlight
             highlightUnselected(lnxgraph, true);
-            // update selected info on all traces too
-            var dup = { selected: [] };
-            var lup = getAnnotationsLayoutUpdate(lnxgraph, []);
-            Plotly.update(lnxgraph.div, dup, lup);
+            // reset all annotations and selected info on all traces too
+            var data_update = { selectedindexes: [] };
+            var layout_update = getAnnotationsLayoutUpdate(lnxgraph, []);
+            Plotly.update(lnxgraph.div, data_update, layout_update);
+        }
+
+        // make annotations visible or not depending on the corresponding trace visibility
+        function syncAnnotations(lnxgraph) {
+            var traces = graphElement(lnxgraph.div).data;
+            var annotations = getInitialAnnotations(lnxgraph);
+            var vtraces = traces.map(trace => (trace.visible == true || trace.visible == undefined));
+            var updatedAnnotations = annotations.reduce(function (res, a) {
+                a.visible = a.traceindexes.some(index => vtraces[index] == true);
+                res.push(a);
+                return res;
+            }, []);
+            if (annotations != updatedAnnotations) {
+                var layout_update = getAnnotationsLayoutUpdate(lnxgraph, updatedAnnotations);
+                Plotly.relayout(lnxgraph.div, layout_update);
+            }
         }
 
         function getUpdateMenus(traces) {
@@ -735,33 +845,39 @@
             return menus;
         }
 
-        function setMenuButtonActive(graphDiv, menuName, active) {
-            var gd = graphElement(graphDiv);
-            for (var i = 0; i < gd.layout.updatemenus.length; i++) {
-                var menu = gd.layout.updatemenus[i];
-                if (menu.name == menuName) {
-                    Plotly.relayout(graphDiv, 'updatemenus[' + i + '].active', (active ? 0 : -1));
-                    break;
-                }
+        function getMenuIndex(graphDiv, menuName) {
+            var menus = graphElement(graphDiv).layout.updatemenus;
+            for (var i = 0; i < menus.length; i++) {
+                console.log(menus[i].name);
+                if (menus[i].name == menuName) {
+                    return i;
+                };
             }
+            return -1;
+        }
+
+        function setMenuButtonActive(graphDiv, menuName, active) {
+            var index = getMenuIndex(graphDiv, menuName);
+            Plotly.relayout(graphDiv, 'updatemenus[' + index + '].active', (active ? 0 : -1));
         }
 
         function setHighlightButtonActive(graphDiv, active) {
             setMenuButtonActive(graphDiv, menuName('HIGHLIGHT_MENU'), active);
         }
 
+        function isHighlightButtonActive(graphDiv) {
+            var index = getMenuIndex(graphDiv, menuName('HIGHLIGHT_MENU'));
+            return graphElement(graphDiv).layout.updatemenus[index].active == 0;
+        }
+
         function setClearSelectionsButtonVisible(graphDiv, visible) {
-            var gd = graphElement(graphDiv);
-            for (var menu of gd.layout.updatemenus) {
-                if (menu.name == menuName('SELECT_MENU')) {
-                    menu.visible = visible;
-                    break;
-                }
-            }
+            var index = getMenuIndex(graphDiv, menuName('SELECT_MENU'));
+            console.log(index);
+            // for some reason this does not need to go through a Plotly.relayout call
+            graphElement(graphDiv).layout.updatemenus[index].visible = visible;
         }
 
         function initBundleSelect(lnxgraph, bundles) {
-            // FIXME: to refactor to adapt to new logics
             if (!lnxgraph.options.bundleselector) {
                 return;
             }
@@ -800,13 +916,13 @@
                 map[node.id] = node;
                 return map;
             }, {});
-            // assign ids to edges for easier management in selection, if missing, and fill references in edgesByNodeId
-            // map
             var edgesByNodeId = {},
                 edgesById = {};
             for (var i = 0; i < fig.edges.length; i++) {
                 var edge = fig.edges[i];
+                // assign ids to edges for easier management in selection
                 edge.id = `NXEdge${i}-${edge.value}`;
+                // fill references in edgesByNodeId map
                 edgesById[edge.id] = edge;
                 if (!edgesByNodeId[edge.source]) {
                     edgesByNodeId[edge.source] = [];
@@ -888,23 +1004,15 @@
                     clickCalled = false;
                 }
             });
-            gd.on('plotly_doubleclick', function (data) {
-                // XXX
-                console.log("doubleclick: ", data);
+            gd.on('plotly_restyle', function (data) {
+                // catch traces visibility changes to sync annotations, see https://community.plotly.com/t/how-to-catch-trace-visibility-changed/5554
+                syncAnnotations(lightNXGraph);
             });
-            gd.on('plotly_legendclick', function (data) {
-                console.log("legendclick: ", data);
-            });
+            // TODO: toggle selection on annotation click?
             gd.on('plotly_clickannotation', function (event, data) {
-                console.log("annot event: ", event);
-                console.log("annot data: ", data);
-                if (data.points) {
-                    var point = data.points[0];
-                    if (point.customdata) {
-                        selectPoint(lightNXGraph, point, false);
-                    }
-                }
+                console.log("annotation event: ", event);
             });
+
             // custom menus management
             gd.on('plotly_buttonclicked', function (data) {
                 if (data.menu.name == menuName('SELECT_MENU')) {
@@ -913,15 +1021,16 @@
                     highlightUnselected(lightNXGraph, data.active != 0);
                 }
             });
+
+            // init and hook bundle selection, might trigger an update if selections exist
+            var bundles = fig.nodes.filter(function (node) { return node.type == 'BUNDLE' });
+            initBundleSelect(lightNXGraph, bundles);
+
+            // XXX for debug only
             gd.on('plotly_afterplot', function () {
                 console.log('done plotting');
                 console.log(document.getElementById(graphDiv).data);
             });
-
-            // init and hook bundle selection, might trigger an update if selections exist
-            // FIXME: disabled for now: makes the page freeze for some reason
-            var bundles = fig.nodes.filter(function (node) { return node.type == 'BUNDLE' });
-            initBundleSelect(lightNXGraph, bundles);
         }
 
         return _plot;
