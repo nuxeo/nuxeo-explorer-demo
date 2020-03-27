@@ -298,7 +298,7 @@
             var x = computeEdgeLineMarkers(edges, nxgraph.nodesById, 'x', nbiterations); // will server as final size reference
             var nbpoints = x.length / edges.length;
             var mreferences = edges.reduce(function (map, edge, index) {
-                map[edge.id] = [...Array(nbpoints).keys()].map(i => index*nbpoints + i);
+                map[edge.id] = [...Array(nbpoints).keys()].map(i => index * nbpoints + i);
                 return map;
             }, {});
             var customdata = edges.map(edge => getEdgeLineMarkerCustomData(nxgraph, edge));
@@ -438,7 +438,11 @@
             }
             var traces = graphElement(lnxgraph.div).data;
             var traceupdates = traces.reduce(function (res, trace) {
-                res.push([...trace.selectedindexes]);
+                if (trace.selectedindexes) {
+                    res.push([...trace.selectedindexes]);
+                } else {
+                    res.push([]);
+                }
                 return res;
             }, []);
             var update = {
@@ -612,7 +616,7 @@
             var traces = graphElement(lnxgraph.div).data;
             // use color for selection, see https://github.com/plotly/plotly.js/issues/2186
             var colors = traces.reduce(function (res, trace) {
-                if (trace.selectedindexes.length == 0) {
+                if (!trace.selectedindexes || trace.selectedindexes.length == 0) {
                     // reset to original color(s) or unselected color
                     res.push(doHighlight ? trace.originalcolors : UNSELECTED_COLOR);
                 } else if (doHighlight) {
@@ -639,12 +643,12 @@
             setClearSelectionsButtonVisible(lnxgraph.div, false);
             // reset dupe detection helpers
             lnxgraph.selected = [];
-            // reset highlight
-            highlightUnselected(lnxgraph, true);
             // reset all annotations and selected info on all traces too
-            var data_update = { selectedindexes: [] };
+            var data_update = { selectedindexes: null }; // XXX: update with an empty array does not work ok...
             var layout_update = getAnnotationsLayoutUpdate(lnxgraph, []);
             Plotly.update(lnxgraph.div, data_update, layout_update);
+            // reset highlight
+            highlightUnselected(lnxgraph, true);
         }
 
         // make annotations visible or not depending on the corresponding trace visibility
