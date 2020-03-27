@@ -298,7 +298,7 @@
             var x = computeEdgeLineMarkers(edges, nxgraph.nodesById, 'x', nbiterations); // will server as final size reference
             var nbpoints = x.length / edges.length;
             var mreferences = edges.reduce(function (map, edge, index) {
-                map[edge.id] = [...Array(nbpoints).keys()].map(i => i + index);
+                map[edge.id] = [...Array(nbpoints).keys()].map(i => index*nbpoints + i);
                 return map;
             }, {});
             var customdata = edges.map(edge => getEdgeLineMarkerCustomData(nxgraph, edge));
