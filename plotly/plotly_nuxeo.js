@@ -127,8 +127,8 @@
         const edgeLineMarkerSize = (nxgraph) => (nxgraph.is3D ? 2 : 5);
 
         const HOVERTEMPLATE = "%{customdata.annotation}<extra></extra>";
-        const nodeMarkerAnnotation = (node) => `<b>${node.label}</b><br />(${node.x}, ${node.y}, ${node.z})<br /><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}`;
-        const edgeLineMarkerAnnotation = (edge, source, target) => `${source.label}<br /><b>${edge.value}</b><br />${target.label}<br />(${source.x}, ${source.y}, ${source.z}) -> (${target.x}, ${target.y}, ${target.z})`;
+        const nodeMarkerAnnotation = (node) => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}`;
+        const edgeLineMarkerAnnotation = (edge, source, target) => `${source.label}<br /><b>${edge.value}</b><br />${target.label}`;
 
         _plot.render = function (graphDiv, options) {
             var datasource = options.datasource;
