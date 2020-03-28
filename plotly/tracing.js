@@ -1,83 +1,174 @@
-import { is3D, EDGE_COLORS, NODE_SYMBOLS, NODE_COLORS } from './constants.js';
+import { edgeColor, edgeLabel, edgeLineMarkerSize, edgeLineMarkerSymbol, MARKER_OPACITY, MARKER_TYPES, nodeColor, nodeLabel, nodeSymbol, nodeWeight, TRACE_TYPES } from './constants.js';
 
-function traceNodes(fig, type, config) {
-  const nodes = fig.nodes.filter((node) => node.type == type);
+const HOVERTEMPLATE = "%{customdata.annotation}<extra></extra>";
+const nodeMarkerAnnotation = (node) => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}`;
+const edgeLineMarkerAnnotation = (edge, source, target) => `${source.label}<br /><b>${edge.value}</b><br />${target.label}`;
 
-  const dict = {
-    name: 'Nodes',
+function getNodeMarkerCustomData(nxgraph, node) {
+  // resolve dependencies to highlight when selecting this node
+  // XXX: depending on node type and each related edge value, resolve some references here or not, maybe?
+  var links = nxgraph.edgesByNodeId[node.id];
+  var data = {
+    markertype: MARKER_TYPES.NODE,
+    id: node.id,
+    annotation: nodeMarkerAnnotation(node),
+    links: links,
+  };
+  return data;
+}
+
+function getEdgeLineMarkerCustomData(nxgraph, edge) {
+  // resolve dependencies to highlight when selecting this edge
+  var links = [edge.source, edge.target];
+  var source = nxgraph.nodesById[edge.source],
+    target = nxgraph.nodesById[edge.target];
+  var data = {
+    markertype: MARKER_TYPES.EDGE,
+    id: edge.id,
+    annotation: edgeLineMarkerAnnotation(edge, source, target),
+    links: links,
+  };
+  return data;
+}
+
+function getNodeTrace(nxgraph, type, config) {
+  var nodes = nxgraph.fig.nodes.filter(function (node) { return type ? node.type == type : true });
+  var references = nodes.reduce(function (map, node, index) {
+    map[node.id] = [index];
+    return map;
+  }, {});
+  var colors = nodes.map(node => nodeColor(node.category));
+  var trace = {
+    name: `<b>${type ? nodeLabel(type) : "Nodes"}</b>`,
+    type: 'scatter',
     mode: 'markers',
-    type: is3D(fig.type) ? 'scatter3d' : 'scatter',
     x: nodes.map(node => node.x),
     y: nodes.map(node => node.y),
-    hoverinfo: 'text',
-    text: nodes.map(node => `<b>${node.label}</b><br />Type: ${node.type}<br />Category: ${node.category}<br />Weight: ${node.weight}<br />`),
-    ...config,
-  };
-
-  if (is3D(fig.type)) {
-    dict.z = nodes.map(node => node['z'])
-  }
-
-  dict.marker = {
-    symbol: NODE_SYMBOLS[type],
-    color: nodes.map(({ category }) => NODE_COLORS[category]),
-    colorscale: "Viridis",
-    size: 6,
-    opacity: 0.8,
-    line: {
-        color: "rgb(50,50,50)",
+    hovertemplate: HOVERTEMPLATE,
+    hoverlabel: { font: { size: 20 } },
+    customdata: nodes.map(node => getNodeMarkerCustomData(nxgraph, node)),
+    marker: {
+      symbol: (type ? nodeSymbol(type) : nodes.map(node => nodeSymbol(node.type))),
+      size: nodes.map(node => nodeWeight(node.weight)),
+      // XXX: color is not shared with hover background in 3D...
+      color: colors, // to be changed on selection/highlight in 3D
+      opacity: MARKER_OPACITY.DEFAULT, // to be changed on selection/highlight in 2D
+      line: {
+        color: 'rgb(50,50,50)',
         width: 0.5
+      },
     },
-    ...config.marker
+    // additional custom trace info
+    tracetype: TRACE_TYPES.NODE,
+    references: references,
+    selectedindexes: [],
+    originalcolors: colors, // keep original colors to handle selections and annotations
   };
+  if (nxgraph.is3D) {
+    Object.assign(trace, {
+      'type': 'scatter3d',
+      'z': nodes.map(node => node.z),
 
-  return dict;
+    });
+  }
+  Object.assign(trace, config);
+  return [trace];
 }
 
-function traceEdges(fig, nodes_by_key, type, config) {
-  var edges = fig.edges.filter((edge) => edge.value == type);
-  var dict = {
-          name: 'Edges',
-          mode: 'lines',
-          type: is3D(fig.type) ? 'scatter3d' : 'scatter',
-          x: edges.reduce((r, edge) => [...r, nodes_by_key[edge.source].x, nodes_by_key[edge.target].x, null], []),
-          y: edges.flatMap(edge => [nodes_by_key[edge.source].y, nodes_by_key[edge.target].y, null]),
-          hoverinfo: 'none',
-          ...config
-  };
-
-  if (is3D(fig.type)) {
-    dict.z = edges.reduce((r, edge) => {r.push(nodes_by_key[edge.source].z, nodes_by_key[edge.target].z, null); return r;}, []);
+// use markers instead of lines because of restrictions on lines (color + width + marker opacity)
+function getEdgeTrace(nxgraph, type, config) {
+  var edges = nxgraph.fig.edges.filter(function (edge) { return type ? edge.value == type : true });
+  var nbiterations = 4;
+  var x = computeEdgeLineMarkers(edges, nxgraph.nodesById, 'x', nbiterations); // will server as final size reference
+  var nbpoints = x.length / edges.length;
+  var mreferences = edges.reduce(function (map, edge, index) {
+    map[edge.id] = [...Array(nbpoints).keys()].map(i => index * nbpoints + i);
+    return map;
+  }, {});
+  var customdata = edges.map(edge => getEdgeLineMarkerCustomData(nxgraph, edge));
+  var colors = type ? edgeColor(type) : edges.map(edge => edgeColor(edge.value));
+  var allcolors = (type ? colors : computeLineMarkersData(colors, nbpoints));
+  var name = (type ? edgeLabel(type) : "Edges");
+  if (type) {
+    name = `<b><span style="color:${edgeColor(type)}">${name}</span></b>`;
   }
-
-  dict.line = {
-          color: EDGE_COLORS[type],
-          width: edges.map(({ weight }) => weight * 3),
-          opacity: 0.5,
-          ...config.line
+  var markers = {
+    name: name,
+    type: 'scattergl',
+    mode: 'markers',
+    x: x,
+    y: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'y', nbiterations),
+    hovertemplate: HOVERTEMPLATE,
+    hoverlabel: { font: { size: 20 } },
+    customdata: computeLineMarkersData(customdata, nbpoints),
+    marker: {
+      symbol: edgeLineMarkerSymbol(nxgraph),
+      color: allcolors, // to be changed on selection/highlight
+      size: edgeLineMarkerSize(nxgraph),
+      line: {
+        color: 'rgb(50,50,50)',
+        width: 0.3,
+      },
+    },
+    // additional custom trace info
+    tracetype: TRACE_TYPES.EDGE,
+    references: mreferences,
+    selectedindexes: [],
+    originalcolors: allcolors, // keep original colors to handle selections and annotations
   };
-  
-  return dict;
+  if (nxgraph.is3D) {
+    Object.assign(markers, {
+      type: 'scatter3d',
+      z: computeEdgeLineMarkers(edges, nxgraph.nodesById, 'z', nbiterations),
+
+
+    });
+  }
+  Object.assign(markers, config);
+  return [markers];
 }
 
-function traceMesh(fig, nodes_by_key, type, config) {
-  var edges = fig.edges.filter((edge) => edge.value == type);
-  var dict = {
-          alphahull: 7,
-          opacity: 0.1,
-          type: is3D(fig.type) ? 'mesh3d' : 'mesh',
-          x: edges.reduce((r, edge) => {r.push(nodes_by_key[edge.source].x, nodes_by_key[edge.target].x, null); return r;}, []),
-          y: edges.reduce((r, edge) => {r.push(nodes_by_key[edge.source].y, nodes_by_key[edge.target].y, null); return r;}, []),
-          ...config
-  };
-  if (is3D(fig.type)) {
-      dict.z = edges.reduce((r, edge) => {r.push(nodes_by_key[edge.source].z, nodes_by_key[edge.target].z, null); return r;}, []);
+function computeEdgeLines(edges, nodesById, axis) {
+  return edges.reduce(function (res, edge) {
+    res.push(nodesById[edge.source][axis], nodesById[edge.target][axis], null);
+    return res;
+  }, []);
+}
+
+// helps building an additional trace to show marker points on relations for better text on hover
+function computeEdgeLineMarkers(edges, nodesById, axis, nbiterations) {
+  return edges.reduce(function (res, edge) {
+    res.push(...midpoints(nodesById[edge.source][axis], nodesById[edge.target][axis], 0, nbiterations));
+    return res;
+  }, []);
+}
+
+// adapt other data content to line markers multiplication thanks to above logics
+function computeLineMarkersData(data, nbpoints) {
+  return data.reduce(function (res, item) {
+    res.push(...Array(nbpoints).fill(item));
+    return res;
+  }, []);
+}
+
+function midpoints(a, b, iteration, nbmax) {
+  var res = [];
+  if (iteration > nbmax) {
+    return res;
   }
-  return dict;
+  var m = midpoint(a, b);
+  res.push(m);
+  res.push(...midpoints(a, m, iteration + 1, nbmax));
+  res.push(...midpoints(m, b, iteration + 1, nbmax));
+  return res;
+}
+
+function midpoint(sourceaxis, targetaxis) {
+  return (sourceaxis + targetaxis) / 2;
 }
 
 export {
-  traceNodes,
-  traceEdges,
-  traceMesh,
+  getNodeTrace,
+  getEdgeTrace,
 };
+
