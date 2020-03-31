@@ -1,6 +1,6 @@
 import { getAnnotationsLayoutUpdate, getInitialAnnotations } from './annotating.js';
 import { graphElement, MARKER_TYPES, TRACE_TYPES } from './constants.js';
-import { isHighlightButtonActive, setClearSelectionsButtonVisible } from './menus.js';
+import { highlightUnselected, isHighlightButtonActive, setClearSelectionsButtonVisible } from './menus.js';
 
 function createFakePoint(id, isNode) {
   return {
