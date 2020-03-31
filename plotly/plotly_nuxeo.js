@@ -13,20 +13,20 @@ export default (graphDiv, options) => Plotly.d3.json(options.datasource, _render
 const _render = (graphDiv, options) => (err, fig) => {
 
   if (err) {
-    console.alert("Error retrieving json data");
+    alert("Error retrieving json data");
     console.error(err);
     return;
   }
 
   var datasource = options.datasource;
   if (!datasource) {
-    console.alert("No datasource");
+    alert("No datasource");
     return;
   }
 
   if (graphType(fig.type) == undefined) {
     var err = "Unsupported graph type " + fig.type;
-    console.alert(err);
+    alert(err);
     console.error(err);
     return;
   }
