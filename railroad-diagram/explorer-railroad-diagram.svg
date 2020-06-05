@@ -1,0 +1,534 @@
+<svg class="railroad-diagram" width="1221" height="1075" viewBox="0 0 1221 1075" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g transform="translate(.5 .5)">
+<g>
+<path d="M20 21v20m10 -20v20m-10 -10h20"></path>
+</g>
+<path d="M40 31h10"></path>
+<g>
+<path d="M50 31h0"></path>
+<path d="M50 31h10"></path>
+<g class="terminal">
+<path d="M60 31h493.75"></path>
+<path d="M667.25 31h493.75"></path>
+<rect x="553.75" y="20" width="113.5" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="35">Start Build</text>
+</g>
+<path d="M1161 31a10 10 0 0 1 10 10v0a10 10 0 0 1 -10 10h-1101a10 10 0 0 0 -10 10v23a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 94h36.75"></path>
+<path d="M1124.25 334h36.75"></path>
+<rect x="96.75" y="75" width="1027.5" height="338" rx="10" ry="10" class="group-box"></rect>
+<g>
+<path d="M96.75 94h10"></path>
+<path d="M106.75 94h10"></path>
+<g>
+<path d="M116.75 94h227.75"></path>
+<path d="M876.5 94h227.75"></path>
+<g class="terminal">
+<path d="M344.5 94h0"></path>
+<path d="M628 94h0"></path>
+<rect x="344.5" y="83" width="283.5" height="22" rx="10" ry="10"></rect>
+<text x="486.25" y="98">Pick Explorer Export Type (TBD)</text>
+</g>
+<path d="M628 94h10"></path>
+<g>
+<path d="M638 94h0"></path>
+<path d="M876.5 94h0"></path>
+<path d="M638 94h20"></path>
+<g class="terminal">
+<path d="M658 94h0"></path>
+<path d="M856.5 94h0"></path>
+<rect x="658" y="83" width="198.5" height="22" rx="10" ry="10"></rect>
+<text x="757.25" y="98">Define Single Package</text>
+</g>
+<path d="M856.5 94h20"></path>
+<path d="M638 94a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M658 124h8.5"></path>
+<path d="M848 124h8.5"></path>
+<rect x="666.5" y="113" width="181.5" height="22" rx="10" ry="10"></rect>
+<text x="757.25" y="128">Define Package List</text>
+</g>
+<path d="M856.5 124a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+</g>
+</g>
+<path d="M1104.25 94a10 10 0 0 1 10 10v29a10 10 0 0 1 -10 10h-987.5a10 10 0 0 0 -10 10v8a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M116.75 171h223.75"></path>
+<path d="M880.5 171h223.75"></path>
+<g>
+<path d="M340.5 171h0"></path>
+<path d="M619 171h0"></path>
+<path d="M340.5 171h20"></path>
+<g>
+<path d="M360.5 171h0"></path>
+<path d="M599 171h0"></path>
+<path d="M360.5 171a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M380.5 151h198.5"></path>
+</g>
+<path d="M579 151a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M360.5 171h20"></path>
+<g class="terminal">
+<path d="M380.5 171h0"></path>
+<path d="M579 171h0"></path>
+<rect x="380.5" y="160" width="198.5" height="22" rx="10" ry="10"></rect>
+<text x="479.75" y="175">Pick Connect Prod URL</text>
+</g>
+<path d="M579 171h20"></path>
+</g>
+<path d="M599 171h20"></path>
+<path d="M340.5 171a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M360.5 201h7.25"></path>
+<path d="M591.75 201h7.25"></path>
+<rect x="367.75" y="190" width="224" height="22" rx="10" ry="10"></rect>
+<text x="479.75" y="205">Pick Connect Preprod URL</text>
+</g>
+<path d="M599 201a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+</g>
+<g>
+<path d="M619 171h0"></path>
+<path d="M880.5 171h0"></path>
+<path d="M619 171h20"></path>
+<g>
+<path d="M639 171h0"></path>
+<path d="M860.5 171h0"></path>
+<path d="M639 171a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M659 151h181.5"></path>
+</g>
+<path d="M840.5 151a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M639 171h20"></path>
+<g class="terminal">
+<path d="M659 171h0"></path>
+<path d="M840.5 171h0"></path>
+<rect x="659" y="160" width="181.5" height="22" rx="10" ry="10"></rect>
+<text x="749.75" y="175">Define Connect CLID</text>
+</g>
+<path d="M840.5 171h20"></path>
+</g>
+<path d="M860.5 171h20"></path>
+</g>
+</g>
+<path d="M1104.25 171a10 10 0 0 1 10 10v29a10 10 0 0 1 -10 10h-987.5a10 10 0 0 0 -10 10v8a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M116.75 248h295"></path>
+<path d="M809.25 248h295"></path>
+<path d="M411.75 248h20"></path>
+<g>
+<path d="M431.75 248h0"></path>
+<path d="M789.25 248h0"></path>
+<path d="M431.75 248a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M451.75 228h317.5"></path>
+</g>
+<path d="M769.25 228a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M431.75 248h20"></path>
+<g class="terminal">
+<path d="M451.75 248h0"></path>
+<path d="M769.25 248h0"></path>
+<rect x="451.75" y="237" width="317.5" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="252">Fill Explorer Production Auth (TBD)</text>
+</g>
+<path d="M769.25 248h20"></path>
+</g>
+<path d="M789.25 248h20"></path>
+<path d="M411.75 248a10 10 0 0 1 10 10v19a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M431.75 287h34"></path>
+<path d="M755.25 287h34"></path>
+<path d="M465.75 287a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M485.75 267h249.5"></path>
+</g>
+<path d="M735.25 267a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M465.75 287h20"></path>
+<g class="terminal">
+<path d="M485.75 287h0"></path>
+<path d="M735.25 287h0"></path>
+<rect x="485.75" y="276" width="249.5" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="291">Fill Alternative Auth (TBD)</text>
+</g>
+<path d="M735.25 287h20"></path>
+</g>
+<path d="M789.25 287a10 10 0 0 0 10 -10v-19a10 10 0 0 1 10 -10"></path>
+</g>
+<path d="M1104.25 248a10 10 0 0 1 10 10v38a10 10 0 0 1 -10 10h-987.5a10 10 0 0 0 -10 10v8a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M116.75 334h10"></path>
+<path d="M1094.25 334h10"></path>
+<g>
+<path d="M126.75 334h0"></path>
+<path d="M532.75 334h0"></path>
+<path d="M126.75 334h20"></path>
+<g>
+<path d="M146.75 334h0"></path>
+<path d="M512.75 334h0"></path>
+<path d="M146.75 334a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M166.75 314h326"></path>
+</g>
+<path d="M492.75 314a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M146.75 334h20"></path>
+<g class="terminal">
+<path d="M166.75 334h0"></path>
+<path d="M492.75 334h0"></path>
+<rect x="166.75" y="323" width="326" height="22" rx="10" ry="10"></rect>
+<text x="329.75" y="338">Choose Target Nuxeo Plaftorm Version</text>
+</g>
+<path d="M492.75 334h20"></path>
+</g>
+<path d="M512.75 334h20"></path>
+</g>
+<g>
+<path d="M532.75 334h0"></path>
+<path d="M1094.25 334h0"></path>
+<path d="M532.75 334h20"></path>
+<g>
+<path d="M552.75 334h31"></path>
+<path d="M1043.25 334h31"></path>
+<path d="M583.75 334a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M603.75 314h419.5"></path>
+</g>
+<path d="M1023.25 314a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M583.75 334h20"></path>
+<g class="terminal">
+<path d="M603.75 334h0"></path>
+<path d="M1023.25 334h0"></path>
+<rect x="603.75" y="323" width="419.5" height="22" rx="10" ry="10"></rect>
+<text x="813.5" y="338">Choose Explorer Build GitHub Master Branch (CI)</text>
+</g>
+<path d="M1023.25 334h20"></path>
+</g>
+<path d="M1074.25 334h20"></path>
+<path d="M532.75 334a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M552.75 364h0"></path>
+<path d="M1074.25 364h0"></path>
+<rect x="552.75" y="353" width="521.5" height="22" rx="10" ry="10"></rect>
+<text x="813.5" y="368">Choose Explorer Build GitHub Branch (Maintenance/Dev/Debug)</text>
+</g>
+<path d="M1074.25 364a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+<path d="M532.75 334a10 10 0 0 1 10 10v40a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M552.75 394h29.75"></path>
+<path d="M1044.5 394h29.75"></path>
+<rect x="582.5" y="383" width="462" height="22" rx="10" ry="10"></rect>
+<text x="813.5" y="398">Choose Explorer Build GitHub Tag (Release/Customers)</text>
+</g>
+<path d="M1074.25 394a10 10 0 0 0 10 -10v-40a10 10 0 0 1 10 -10"></path>
+</g>
+</g>
+<path d="M1104.25 334h10"></path>
+<path d="M1114.25 334h10"></path>
+</g>
+<g>
+<path d="M96.75 67h0"></path>
+<path d="M204.75 67h0"></path>
+<text x="150.75" y="72" class="comment">Job Parameters</text>
+</g>
+</g>
+<path d="M1161 334a10 10 0 0 1 10 10v67a10 10 0 0 1 -10 10h-1101a10 10 0 0 0 -10 10v23a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 464h10"></path>
+<path d="M1151 793h10"></path>
+<rect x="70" y="445" width="1081" height="375" rx="10" ry="10" class="group-box"></rect>
+<g>
+<path d="M70 464h10"></path>
+<path d="M80 464h10"></path>
+<g class="terminal">
+<path d="M90 464h289.5"></path>
+<path d="M841.5 464h289.5"></path>
+<rect x="379.5" y="453" width="462" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="468">Checkout Explorer Build Branch Defined in Parameters</text>
+</g>
+<path d="M1131 464a10 10 0 0 1 10 10v0a10 10 0 0 1 -10 10h-1041a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M90 504h227"></path>
+<path d="M904 504h227"></path>
+<path d="M317 504h20"></path>
+<g class="terminal">
+<path d="M337 504h131.75"></path>
+<path d="M752.25 504h131.75"></path>
+<rect x="468.75" y="493" width="283.5" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="508">Build Server for Explorer Build</text>
+</g>
+<path d="M884 504h20"></path>
+<path d="M317 504a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M337 534h0"></path>
+<path d="M884 534h0"></path>
+<rect x="337" y="523" width="547" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="538">Download Server for Chosen Target Nuxeo Platform Version (HFs)</text>
+</g>
+<path d="M884 534a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+</g>
+<path d="M1131 504a10 10 0 0 1 10 10v29a10 10 0 0 1 -10 10h-1041a10 10 0 0 0 -10 10v8a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M90 581h150.25"></path>
+<path d="M980.75 581h150.25"></path>
+<g>
+<path d="M240.25 581h0"></path>
+<path d="M631.75 581h0"></path>
+<path d="M240.25 581a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M260.25 561h351.5"></path>
+</g>
+<path d="M611.75 561a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M240.25 581h20"></path>
+<g class="terminal">
+<path d="M260.25 581h0"></path>
+<path d="M611.75 581h0"></path>
+<rect x="260.25" y="570" width="351.5" height="22" rx="10" ry="10"></rect>
+<text x="436" y="585">Setup Connect URL Defined in Parameters</text>
+</g>
+<path d="M611.75 581h20"></path>
+</g>
+<g>
+<path d="M631.75 581h0"></path>
+<path d="M980.75 581h0"></path>
+<path d="M631.75 581a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M651.75 561h309"></path>
+</g>
+<path d="M960.75 561a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M631.75 581h20"></path>
+<g class="terminal">
+<path d="M651.75 581h0"></path>
+<path d="M960.75 581h0"></path>
+<rect x="651.75" y="570" width="309" height="22" rx="10" ry="10"></rect>
+<text x="806.25" y="585">Install CLID Defined in Parameters</text>
+</g>
+<path d="M960.75 581h20"></path>
+</g>
+</g>
+<path d="M1131 581a10 10 0 0 1 10 10v0a10 10 0 0 1 -10 10h-1041a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M90 621h303.5"></path>
+<path d="M827.5 621h303.5"></path>
+<path d="M393.5 621h20"></path>
+<g class="terminal">
+<path d="M413.5 621h0"></path>
+<path d="M807.5 621h0"></path>
+<rect x="413.5" y="610" width="394" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="625">Install Explorer Package from Maven Resource</text>
+</g>
+<path d="M807.5 621h20"></path>
+<path d="M393.5 621a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M413.5 651h29.75"></path>
+<path d="M777.75 651h29.75"></path>
+<rect x="443.25" y="640" width="334.5" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="655">Install Explorer Package from Connect</text>
+</g>
+<path d="M807.5 651a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+</g>
+<path d="M1131 621a10 10 0 0 1 10 10v29a10 10 0 0 1 -10 10h-1041a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M90 690h344.75"></path>
+<path d="M786.25 690h344.75"></path>
+<rect x="434.75" y="679" width="351.5" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="694">Install Potential HotFixes from Connect</text>
+</g>
+<path d="M1131 690a10 10 0 0 1 10 10v0a10 10 0 0 1 -10 10h-1041a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M90 730h285.25"></path>
+<path d="M845.75 730h285.25"></path>
+<rect x="375.25" y="719" width="470.5" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="734">Install Package(s) Defined in Parameters from Connect</text>
+</g>
+<path d="M1131 730a10 10 0 0 1 10 10v0a10 10 0 0 1 -10 10h-1041a10 10 0 0 0 -10 10v23a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M90 793h10"></path>
+<path d="M1121 793h10"></path>
+<g class="terminal">
+<path d="M100 793h0"></path>
+<path d="M222 793h0"></path>
+<rect x="100" y="782" width="122" height="22" rx="10" ry="10"></rect>
+<text x="161" y="797">Start Server</text>
+</g>
+<path d="M222 793h10"></path>
+<path d="M232 793h10"></path>
+<g>
+<path d="M242 793h0"></path>
+<path d="M987.5 793h0"></path>
+<rect x="242" y="774" width="745.5" height="38" rx="10" ry="10" class="group-box"></rect>
+<g class="non-terminal">
+<path d="M242 793h10"></path>
+<path d="M977.5 793h10"></path>
+<rect x="252" y="782" width="725.5" height="22"></rect>
+<text x="614.75" y="797">Perform Export as Defined In Parameters (curl command with Administrator user auth)</text>
+</g>
+<g>
+<path d="M242 766h0"></path>
+<path d="M420 766h0"></path>
+<text x="331" y="771" class="comment">Export Type Logics (TBD)</text>
+</g>
+</g>
+<path d="M987.5 793h10"></path>
+<path d="M997.5 793h10"></path>
+<g class="terminal">
+<path d="M1007.5 793h0"></path>
+<path d="M1121 793h0"></path>
+<rect x="1007.5" y="782" width="113.5" height="22" rx="10" ry="10"></rect>
+<text x="1064.25" y="797">Stop Server</text>
+</g>
+</g>
+<path d="M1131 793h10"></path>
+<path d="M1141 793h10"></path>
+</g>
+<g>
+<path d="M70 437h0"></path>
+<path d="M451 437h0"></path>
+<text x="260.5" y="442" class="comment">Pipeline Build (tools-nuxeo-ftest logics) on QA Slave</text>
+</g>
+</g>
+<path d="M1161 793a10 10 0 0 1 10 10v15a10 10 0 0 1 -10 10h-1101a10 10 0 0 0 -10 10v23a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 871h195.75"></path>
+<path d="M965.25 919h195.75"></path>
+<rect x="255.75" y="852" width="709.5" height="164" rx="10" ry="10" class="group-box"></rect>
+<g>
+<path d="M255.75 871h10"></path>
+<path d="M265.75 871h10"></path>
+<g class="terminal">
+<path d="M275.75 871h265.25"></path>
+<path d="M680 871h265.25"></path>
+<rect x="541" y="860" width="139" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="875">Archive Export</text>
+</g>
+<path d="M945.25 871a10 10 0 0 1 10 10v0a10 10 0 0 1 -10 10h-669.5a10 10 0 0 0 -10 10v8a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M275.75 919h0"></path>
+<path d="M945.25 919h0"></path>
+<path d="M275.75 919h20"></path>
+<g>
+<path d="M295.75 919h0"></path>
+<path d="M925.25 919h0"></path>
+<path d="M295.75 919a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M315.75 899h589.5"></path>
+</g>
+<path d="M905.25 899a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M295.75 919h20"></path>
+<g class="terminal">
+<path d="M315.75 919h0"></path>
+<path d="M905.25 919h0"></path>
+<rect x="315.75" y="908" width="589.5" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="923">Import in Explorer Production Site Using Auth Defined In Parameters</text>
+</g>
+<path d="M905.25 919h20"></path>
+</g>
+<path d="M925.25 919h20"></path>
+<path d="M275.75 919a10 10 0 0 1 10 10v19a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M295.75 958h46.75"></path>
+<path d="M878.5 958h46.75"></path>
+<path d="M342.5 958a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M362.5 938h496"></path>
+</g>
+<path d="M858.5 938a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M342.5 958h20"></path>
+<g class="terminal">
+<path d="M362.5 958h0"></path>
+<path d="M858.5 958h0"></path>
+<rect x="362.5" y="947" width="496" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="962">Push Archive Elsewhere Depending on Alternative Auth (?)</text>
+</g>
+<path d="M858.5 958h20"></path>
+</g>
+<path d="M925.25 958a10 10 0 0 0 10 -10v-19a10 10 0 0 1 10 -10"></path>
+<path d="M275.75 919a10 10 0 0 1 10 10v58a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M295.75 997h38.25"></path>
+<path d="M887 997h38.25"></path>
+<path d="M334 997a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M354 977h513"></path>
+</g>
+<path d="M867 977a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M334 997h20"></path>
+<g class="terminal">
+<path d="M354 997h0"></path>
+<path d="M867 997h0"></path>
+<rect x="354" y="986" width="513" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="1001">Commit Export in Target Nuxeo Repository and Create PR (?)</text>
+</g>
+<path d="M867 997h20"></path>
+</g>
+<path d="M925.25 997a10 10 0 0 0 10 -10v-58a10 10 0 0 1 10 -10"></path>
+</g>
+<path d="M945.25 919h10"></path>
+<path d="M955.25 919h10"></path>
+</g>
+<g>
+<path d="M255.75 844h0"></path>
+<path d="M363.75 844h0"></path>
+<text x="309.75" y="849" class="comment">Archiving/Push</text>
+</g>
+</g>
+<path d="M1161 919a10 10 0 0 1 10 10v85a10 10 0 0 1 -10 10h-1101a10 10 0 0 0 -10 10v0a10 10 0 0 0 10 10"></path>
+<g class="terminal">
+<path d="M60 1044h498"></path>
+<path d="M663 1044h498"></path>
+<rect x="558" y="1033" width="105" height="22" rx="10" ry="10"></rect>
+<text x="610.5" y="1048">Stop Build</text>
+</g>
+<path d="M1161 1044h10"></path>
+<path d="M1171 1044h0"></path>
+</g>
+<path d="M1171 1044h10"></path>
+<path d="M 1181 1044 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+<style>
+	svg {
+		background-color: hsl(30,20%,95%);
+	}
+	path {
+		stroke-width: 3;
+		stroke: black;
+		fill: rgba(0,0,0,0);
+	}
+	text {
+		font: bold 14px monospace;
+		text-anchor: middle;
+		white-space: pre;
+	}
+	text.diagram-text {
+		font-size: 12px;
+	}
+	text.diagram-arrow {
+		font-size: 16px;
+	}
+	text.label {
+		text-anchor: start;
+	}
+	text.comment {
+		font: italic 12px monospace;
+	}
+	g.non-terminal text {
+		/&#42;font-style: italic;&#42;/
+	}
+	rect {
+		stroke-width: 3;
+		stroke: black;
+		fill: hsl(120,100%,90%);
+	}
+	rect.group-box {
+		stroke: gray;
+		stroke-dasharray: 10 5;
+		fill: none;
+	}
+	path.diagram-text {
+		stroke-width: 3;
+		stroke: black;
+		fill: white;
+		cursor: help;
+	}
+	g.diagram-text:hover path.diagram-text {
+		fill: #eee;
+	}</style>
+</svg>
