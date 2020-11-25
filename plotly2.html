@@ -1,0 +1,69 @@
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Nuxeo Plotly Rendering</title>
+  <style>
+    .plotly-graph-selection {
+      text-align: center;
+    }
+
+    .plotly-graph-div {
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body>
+  <div>
+    <script type="text/javascript">window.PlotlyConfig = { MathJaxConfig: 'local' };</script>
+    <script src="./plotly/plotly-latest.js"></script>
+    <div id="selection" class="plotly-graph-selection">
+      <form>
+        <div>
+          <label for="ds">Select Datasource:</label>
+          <select id="ds" name="ds">
+            <option value="data/11.3_graph.json" selected="selected">11.3 Graph</option>
+            <option value="data/10.10_graph.json">10.10 Graph</option>
+            <option value="data/11.3_explorer_graph.json">11.3 Explorer Graph</option>
+            <option value="data/basic_graph.json">Test Graph</option>
+          </select>
+          <input type="checkbox" id="threeD" name="threeD">
+          <label for="threeD">3D</label>
+        </div>
+        <div>
+          <select class="bundleselectorclass" id="bundleselector" name="bundleselector">
+            <option value="" selected disabled hidden="hidden">Filter on Bundle</option>
+          </select>
+        </div>
+      </form>
+      <div id="graph" class="plotly-graph-div"></div>
+    </div>
+    <script type="module">
+      import plot from './plotly2/plotly_nuxeo.js';
+
+      const select = document.getElementById('ds');
+      const threeDCheck = document.getElementById('threeD');
+      const bundleselector = document.getElementById('bundleselector');
+
+      const render = () => {
+        const { value, options, selectedIndex } = select;
+        const nxoptions = {
+          datasource: value,
+          datasourcetitle: options[selectedIndex].label,
+          threeD: threeDCheck.checked,
+          bundleselector: '#bundleselector',
+          selectedbundle: bundleselector.value,
+        };
+        plot('graph', nxoptions);
+      }
+
+      select.addEventListener('change', render);
+      threeDCheck.addEventListener('change', render);
+
+      window.onload = render;
+    </script>
+  </div>
+</body>
+
+</html>
