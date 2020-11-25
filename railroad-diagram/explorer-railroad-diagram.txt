@@ -3,10 +3,9 @@ Diagram(
     Terminal('Start Build'),
     Group(Stack(
         Sequence(
-          'Pick Explorer Export Type (TBD)',
           Choice(0,
-            'Define Single Package',
-            'Define Package List',
+            'Pick Package List from Resources',
+            'Define Package List Manually',
           ),
         ),
         Sequence(
@@ -19,8 +18,7 @@ Diagram(
           ),
         ),
         Choice(0,
-          Optional('Fill Explorer Production Auth (TBD)'),
-          Optional('Fill Alternative Auth (TBD)'),
+          Optional('Fill Explorer Production Auth Token'),
         ),
         Sequence(
           Choice(0,
@@ -29,7 +27,7 @@ Diagram(
           Choice(0,
             Optional('Choose Explorer Build GitHub Master Branch (CI)'),
             'Choose Explorer Build GitHub Branch (Maintenance/Dev/Debug)',
-            'Choose Explorer Build GitHub Tag (Release/Customers)',
+            'Choose Explorer Build GitHub Release Tag',
           ),
          ),
       ), 'Job Parameters'),
@@ -37,7 +35,7 @@ Diagram(
         'Checkout Explorer Build Branch Defined in Parameters',
         Choice(0,
           'Build Server for Explorer Build',
-          'Download Server for Chosen Target Nuxeo Platform Version (HFs)',
+          'Download Server for Chosen Target Nuxeo Platform Version',
         ),
         Sequence(
           Optional('Setup Connect URL Defined in Parameters'),
@@ -47,23 +45,17 @@ Diagram(
           'Install Explorer Package from Maven Resource',
           'Install Explorer Package from Connect',
         ),
-        'Install Potential HotFixes from Connect',
         'Install Package(s) Defined in Parameters from Connect',
         Sequence(
           'Start Server',
-          Group(
-            NonTerminal('Perform Export as Defined In Parameters (curl command with Administrator user auth)'),
-            'Export Type Logics (TBD)',
-          ),
+          NonTerminal('Perform Export (curl command with Administrator user auth)'),
           'Stop Server',
         ),
       ), 'Pipeline Build (tools-nuxeo-ftest logics) on QA Slave'),
     Group(Stack(
         'Archive Export',
         Choice(0,
-          Optional('Import in Explorer Production Site Using Auth Defined In Parameters'),
-          Optional('Push Archive Elsewhere Depending on Alternative Auth (?)'),
-          Optional('Commit Export in Target Nuxeo Repository and Create PR (?)'),
+          Optional('Import in Explorer Production Site Using Token Auth Defined In Parameters'),
         ),
       ), 'Archiving/Push'),
     Terminal('Stop Build'),
